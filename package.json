@@ -1,34 +1,25 @@
 {
   "name": "meu-upload",
   "version": "1.0.0",
-  "description": "Aplicação de upload com Firebase",
+  "description": "Upload de ficheiros com Firebase (sem Express)",
   "main": "app.js",
   "scripts": {
     "start": "node app.js",
     "dev": "nodemon app.js"
   },
   "dependencies": {
-    "cors": "^2.8.5",
     "dotenv": "^16.3.1",
-    "express": "^4.18.2",
-    "firebase": "^12.15.0",
-    "firebase-admin": "^11.11.1",
-    "multer": "^1.4.5-lts.1"
+    "firebase-admin": "^14.0.0",
+    "googleapis": "^173.0.0",
+    "jsonwebtoken": "^9.0.3"
   },
   "devDependencies": {
     "nodemon": "^3.0.1"
   },
-  "keywords": [
-    "upload",
-    "firebase",
-    "nodejs",
-    "express"
-  ],
-  "author": "O Seu Nome",
   "license": "ISC",
   "allowScripts": {
-    "@firebase/util@1.15.1": true,
     "protobufjs@7.2.4": true,
-    "protobufjs@7.6.4": true
+    "protobufjs@7.6.4": true,
+    "@firebase/util@1.15.1": true
   }
 }
