@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Upload</title>
+</head>
+<body>
+    <h1>📤 Upload de Ficheiros</h1>
+    <input type="file" id="fileInput">
+    <button onclick="upload()">Enviar</button>
+    <div id="status"></div>
+
+    <script>
+        async function upload() {
+            const input = document.getElementById('fileInput');
+            const status = document.getElementById('status');
+
+            if (!input.files.length) {
+                status.textContent = '❌ Selecione um ficheiro!';
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', input.files[0]);
+
+            status.textContent = '⏳ A enviar...';
+
+            try {
+                const res = await fetch('/api/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await res.json();
+
+                if (res.ok) {
+                    status.textContent = '✅ Sucesso! URL: ' + data.data.url;
+                } else {
+                    status.textContent = '❌ Erro: ' + data.error;
+                }
+            } catch (err) {
+                status.textContent = '❌ Erro: ' + err.message;
+            }
+        }
+    </script>
+</body>
+</html>
