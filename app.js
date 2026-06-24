@@ -1,84 +1,3 @@
-require('dotenv').config();
-const http = require('http');
-const path = require('path');
-const fs = require('fs');
-const https = require('https');
-const { google } = require('googleapis');
-
-const PORT = process.env.PORT || 3000;
-
-// ========== CONFIGURAÇÃO ==========
-const BUCKET_NAME = process.env.FIREBASE_STORAGE_BUCKET || 'projeto-shares.firebasestorage.app';
-
-// ========== FUNÇÃO PARA OBTER TOKEN OAuth2 ==========
-function getAccessToken() {
-  return new Promise((resolve, reject) => {
-    // Carregar o ficheiro de credenciais
-    const serviceAccountPath = path.join(__dirname, 'firebase-adminsdk.json');
-    let serviceAccount;
-    
-    try {
-      serviceAccount = require(serviceAccountPath);
-    } catch (error) {
-      reject(new Error('Ficheiro de credenciais não encontrado: ' + error.message));
-      return;
-    }
-
-    // Criar o JWT
-    const jwt = require('jsonwebtoken');
-    const now = Math.floor(Date.now() / 1000);
-    const payload = {
-      iss: serviceAccount.client_email,
-      scope: 'https://www.googleapis.com/auth/devstorage.read_write',
-      aud: 'https://oauth2.googleapis.com/token',
-      exp: now + 3600,
-      iat: now
-    };
-
-    const token = jwt.sign(payload, serviceAccount.private_key, { algorithm: 'RS256' });
-
-    // Fazer a requisição para obter o token
-    const postData = `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${token}`;
-    
-    const options = {
-      hostname: 'oauth2.googleapis.com',
-      path: '/token',
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Content-Length': Buffer.byteLength(postData)
-      }
-    };
-
-    console.log('⏳ A obter token OAuth2...');
-
-    const req = https.request(options, (res) => {
-      let data = '';
-      res.on('data', (chunk) => { data += chunk; });
-      res.on('end', () => {
-        try {
-          const response = JSON.parse(data);
-          if (response.access_token) {
-            console.log('✅ Token OAuth2 obtido com sucesso!');
-            resolve(response.access_token);
-          } else {
-            reject(new Error('Erro ao obter token: ' + JSON.stringify(response)));
-          }
-        } catch (error) {
-          reject(new Error('Erro ao processar resposta: ' + error.message));
-        }
-      });
-    });
-
-    req.on('error', (error) => {
-      reject(new Error('Erro na requisição: ' + error.message));
-    });
-
-    req.write(postData);
-    req.end();
-  });
-}
-
 // ========== FUNÇÃO PARA FAZER UPLOAD ==========
 async function uploadToFirebase(fileBuffer, fileName, mimetype) {
   const token = await getAccessToken();
@@ -88,11 +7,12 @@ async function uploadToFirebase(fileBuffer, fileName, mimetype) {
   const extension = path.extname(fileName);
   const newFileName = `uploads/${timestamp}-${random}${extension}`;
   
-  const url = `https://storage.googleapis.com/upload/storage/v1/b/${BUCKET_NAME}/o?uploadType=media&name=${encodeURIComponent(newFileName)}`;
+  // ===== 1. FAZER UPLOAD =====
+  const uploadUrl = `https://storage.googleapis.com/upload/storage/v1/b/${BUCKET_NAME}/o?uploadType=media&name=${encodeURIComponent(newFileName)}`;
   
   console.log('⏳ A fazer upload para o Firebase Storage...');
   
-  return new Promise((resolve, reject) => {
+  const uploadResult = await new Promise((resolve, reject) => {
     const options = {
       method: 'POST',
       headers: {
@@ -102,18 +22,14 @@ async function uploadToFirebase(fileBuffer, fileName, mimetype) {
       }
     };
 
-    const req = https.request(url, options, (res) => {
+    const req = https.request(uploadUrl, options, (res) => {
       let data = '';
       res.on('data', (chunk) => { data += chunk; });
       res.on('end', () => {
         try {
           const response = JSON.parse(data);
           if (response.name) {
-            console.log('✅ Upload concluído!');
-            resolve({
-              url: `https://storage.googleapis.com/${BUCKET_NAME}/${response.name}`,
-              fileName: response.name
-            });
+            resolve(response);
           } else {
             reject(new Error('Erro no upload: ' + JSON.stringify(response)));
           }
@@ -130,155 +46,63 @@ async function uploadToFirebase(fileBuffer, fileName, mimetype) {
     req.write(fileBuffer);
     req.end();
   });
-}
 
-// ========== PARSE MULTIPART ==========
-function parseMultipart(buffer, boundary) {
-  const parts = [];
-  const boundaryBuffer = Buffer.from(`--${boundary}`);
-  const endBoundary = Buffer.from(`--${boundary}--`);
+  console.log('✅ Upload concluído!');
+
+  // ===== 2. TORNAR O FICHEIRO PÚBLICO =====
+  console.log('⏳ A tornar o ficheiro público...');
   
-  let start = 0;
-  let end = buffer.indexOf(boundaryBuffer, start);
+  const publicUrl = `https://storage.googleapis.com/${BUCKET_NAME}/${newFileName}`;
   
-  while (end !== -1) {
-    if (start !== end) {
-      const partBuffer = buffer.slice(start, end);
-      const headerEnd = partBuffer.indexOf('\r\n\r\n');
-      if (headerEnd !== -1) {
-        const headers = partBuffer.slice(0, headerEnd).toString();
-        const content = partBuffer.slice(headerEnd + 4);
-        const filenameMatch = headers.match(/filename="([^"]+)"/);
-        const nameMatch = headers.match(/name="([^"]+)"/);
-        if (filenameMatch && nameMatch) {
-          parts.push({
-            name: nameMatch[1],
-            filename: filenameMatch[1],
-            data: content
-          });
-        }
+  // Para tornar público, precisamos de definir permissões
+  const aclUrl = `https://storage.googleapis.com/storage/v1/b/${BUCKET_NAME}/o/${encodeURIComponent(newFileName)}/acl`;
+  
+  await new Promise((resolve, reject) => {
+    const aclData = JSON.stringify({
+      entity: 'allUsers',
+      role: 'READER'
+    });
+
+    const options = {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(aclData)
       }
-    }
-    start = end + boundaryBuffer.length;
-    end = buffer.indexOf(boundaryBuffer, start);
-  }
-  
-  return parts;
-}
+    };
 
-// ========== SERVIDOR ==========
-const server = http.createServer(async (req, res) => {
-  console.log(`📥 ${req.method} ${req.url}`);
-  
-  // Health check
-  if (req.method === 'GET' && req.url === '/api/health') {
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ status: 'OK', message: 'Servidor a funcionar!' }));
-    return;
-  }
-  
-  // Upload
-  if (req.method === 'POST' && req.url === '/api/upload') {
-    const contentType = req.headers['content-type'] || '';
-    const boundaryMatch = contentType.match(/boundary=(.+)$/);
-    
-    if (!boundaryMatch) {
-      res.writeHead(400, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Boundary não encontrado' }));
-      return;
-    }
-    
-    const boundary = boundaryMatch[1];
-    const chunks = [];
-    
-    req.on('data', (chunk) => chunks.push(chunk));
-    
-    req.on('end', async () => {
-      try {
-        const buffer = Buffer.concat(chunks);
-        const parts = parseMultipart(buffer, boundary);
-        const filePart = parts.find(p => p.name === 'file');
-        
-        if (!filePart || !filePart.data || filePart.data.length === 0) {
-          res.writeHead(400, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ error: 'Nenhum ficheiro enviado' }));
-          return;
-        }
-        
-        console.log(`📄 Ficheiro: ${filePart.filename}`);
-        console.log(`📏 Tamanho: ${filePart.data.length} bytes`);
-        
-        const result = await uploadToFirebase(filePart.data, filePart.filename, 'application/octet-stream');
-        
-        console.log(`🔗 URL: ${result.url}`);
-        
-        res.writeHead(201, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({
-          success: true,
-          message: 'Ficheiro enviado com sucesso!',
-          data: {
-            originalName: filePart.filename,
-            fileName: result.fileName,
-            url: result.url,
-            size: filePart.data.length
+    const req = https.request(aclUrl, options, (res) => {
+      let data = '';
+      res.on('data', (chunk) => { data += chunk; });
+      res.on('end', () => {
+        try {
+          const response = JSON.parse(data);
+          if (response.role === 'READER') {
+            console.log('✅ Ficheiro público!');
+            resolve();
+          } else {
+            console.log('⚠️ Resposta da ACL:', response);
+            resolve(); // Mesmo que a resposta não seja a esperada, continuamos
           }
-        }));
-        
-      } catch (error) {
-        console.error('❌ Erro:', error.message);
-        res.writeHead(500, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({
-          error: 'Erro ao fazer upload',
-          details: error.message
-        }));
-      }
+        } catch (error) {
+          console.log('⚠️ Erro ao definir ACL, mas o ficheiro foi carregado:', error.message);
+          resolve(); // Continuamos mesmo com erro
+        }
+      });
     });
-    
-    return;
-  }
-  
-  // Página principal
-  if (req.method === 'GET' && req.url === '/') {
-    const filePath = path.join(__dirname, 'public', 'index.html');
-    fs.readFile(filePath, (err, data) => {
-      if (err) {
-        res.writeHead(404);
-        res.end('Página não encontrada');
-        return;
-      }
-      res.writeHead(200, { 'Content-Type': 'text/html' });
-      res.end(data);
-    });
-    return;
-  }
-  
-  // Ficheiros estáticos
-  if (req.method === 'GET') {
-    const filePath = path.join(__dirname, 'public', req.url);
-    fs.readFile(filePath, (err, data) => {
-      if (err) {
-        res.writeHead(404);
-        res.end('Ficheiro não encontrado');
-        return;
-      }
-      const ext = path.extname(filePath);
-      const contentTypes = {
-        '.html': 'text/html', '.css': 'text/css', '.js': 'application/javascript',
-        '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
-        '.gif': 'image/gif', '.svg': 'image/svg+xml', '.ico': 'image/x-icon'
-      };
-      res.writeHead(200, { 'Content-Type': contentTypes[ext] || 'application/octet-stream' });
-      res.end(data);
-    });
-    return;
-  }
-  
-  res.writeHead(404, { 'Content-Type': 'application/json' });
-  res.end(JSON.stringify({ error: 'Rota não encontrada' }));
-});
 
-server.listen(PORT, () => {
-  console.log(`🚀 Servidor HTTP puro em http://localhost:${PORT}`);
-  console.log(`📤 Upload: POST http://localhost:${PORT}/api/upload`);
-  console.log(`🏥 Health: GET http://localhost:${PORT}/api/health`);
-});
+    req.on('error', (error) => {
+      console.log('⚠️ Erro na requisição ACL:', error.message);
+      resolve(); // Continuamos mesmo com erro
+    });
+
+    req.write(aclData);
+    req.end();
+  });
+
+  return {
+    url: publicUrl,
+    fileName: newFileName
+  };
+}
