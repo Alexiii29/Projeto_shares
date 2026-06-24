@@ -28,7 +28,12 @@ exports.uploadFile = async (req, res) => {
     res.json({ success: true, data: { originalName: file.originalname, url, size: file.size } });
 
   } catch (error) {
-    console.error('❌ Erro:', error.message);
-    res.status(500).json({ error: 'Erro no upload', details: error.message });
-  }
+  console.error('❌ ERRO COMPLETO');
+  console.error(error);
+
+  res.status(500).json({
+    error: error.message,
+    stack: error.stack
+  });
+}
 };
