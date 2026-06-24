@@ -1,360 +1,601 @@
 <!DOCTYPE html>
 <html lang="pt">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>📤 Upload de Ficheiros</title>
-  <style>
-    * { 
-      margin: 0; 
-      padding: 0; 
-      box-sizing: border-box; 
-    }
-    
-    body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      min-height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      padding: 20px;
-    }
-    
-    .container {
-      background: white;
-      padding: 40px;
-      border-radius: 20px;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-      max-width: 550px;
-      width: 100%;
-    }
-    
-    h1 {
-      color: #333;
-      text-align: center;
-      margin-bottom: 30px;
-      font-size: 28px;
-    }
-    
-    h1 span {
-      background: linear-gradient(135deg, #667eea, #764ba2);
-      background-clip: text;
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-    
-    .upload-area {
-      border: 2px dashed #ddd;
-      padding: 40px 20px;
-      text-align: center;
-      border-radius: 15px;
-      cursor: pointer;
-      transition: all 0.3s;
-      background: #fafafa;
-    }
-    
-    .upload-area:hover {
-      border-color: #667eea;
-      background: #f0f0ff;
-    }
-    
-    .upload-area.dragover {
-      border-color: #4CAF50;
-      background: #e8f5e9;
-    }
-    
-    .upload-icon {
-      font-size: 56px;
-      display: block;
-    }
-    
-    .upload-area p {
-      color: #666;
-      font-size: 16px;
-    }
-    
-    .upload-area .sub-text {
-      font-size: 13px;
-      color: #999;
-      margin-top: 8px;
-    }
-    
-    input[type="file"] {
-      display: none;
-    }
-    
-    button {
-      background: linear-gradient(135deg, #667eea, #764ba2);
-      color: white;
-      border: none;
-      padding: 14px 40px;
-      border-radius: 12px;
-      cursor: pointer;
-      font-size: 17px;
-      font-weight: 600;
-      margin-top: 25px;
-      width: 100%;
-      transition: all 0.3s;
-    }
-    
-    button:hover:not(:disabled) {
-      transform: translateY(-3px);
-      box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
-    }
-    
-    button:disabled {
-      background: #ccc;
-      cursor: not-allowed;
-    }
-    
-    #status {
-      margin-top: 20px;
-      padding: 15px;
-      border-radius: 12px;
-      display: none;
-      font-weight: 500;
-    }
-    
-    .success {
-      background: #d4edda;
-      color: #155724;
-      border: 1px solid #c3e6cb;
-    }
-    
-    .error {
-      background: #f8d7da;
-      color: #721c24;
-      border: 1px solid #f5c6cb;
-    }
-    
-    .info {
-      background: #d1ecf1;
-      color: #0c5460;
-      border: 1px solid #bee5eb;
-    }
-    
-    .file-info {
-      margin-top: 18px;
-      padding: 18px;
-      background: #f8f9fa;
-      border-radius: 12px;
-      display: none;
-      font-size: 14px;
-      border-left: 4px solid #667eea;
-    }
-    
-    .file-info .detail {
-      padding: 3px 0;
-      color: #555;
-    }
-    
-    #progress {
-      margin-top: 18px;
-      background: #f0f0f0;
-      border-radius: 10px;
-      overflow: hidden;
-      display: none;
-      height: 24px;
-    }
-    
-    #progressBar {
-      height: 100%;
-      background: linear-gradient(90deg, #667eea, #764ba2);
-      width: 0%;
-      transition: width 0.3s;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: white;
-      font-size: 13px;
-      font-weight: 600;
-    }
-    
-    .url-link {
-      color: #667eea;
-      text-decoration: none;
-      word-break: break-all;
-    }
-    
-    .url-link:hover {
-      text-decoration: underline;
-    }
-  </style>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>📤 Meus Documentos</title>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container { max-width: 900px; margin: 0 auto; }
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        }
+        .hidden { display: none !important; }
+
+        /* ===== HEADER ===== */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .header h1 { font-size: 24px; color: #333; }
+        .header h1 span {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #667eea;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 18px;
+        }
+        .user-email { font-size: 14px; color: #555; }
+        .btn {
+            padding: 8px 20px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        .btn-primary { background: #667eea; color: white; }
+        .btn-primary:hover { background: #5a67d8; transform: translateY(-2px); }
+        .btn-danger { background: #e53e3e; color: white; }
+        .btn-danger:hover { background: #c53030; }
+        .btn-success { background: #48bb78; color: white; }
+        .btn-success:hover { background: #38a169; }
+        .btn-sm { padding: 5px 12px; font-size: 12px; }
+        .btn-danger-sm {
+            background: #e53e3e;
+            color: white;
+            border: none;
+            padding: 5px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .btn-danger-sm:hover { background: #c53030; }
+
+        /* ===== AUTH FORM ===== */
+        .auth-form { max-width: 400px; margin: 0 auto; }
+        .auth-form h2 { text-align: center; margin-bottom: 20px; color: #333; }
+        .auth-form input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            margin-bottom: 12px;
+            font-size: 15px;
+        }
+        .auth-form input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        .auth-form .btn { width: 100%; padding: 12px; font-size: 16px; }
+        .auth-toggle {
+            color: #667eea;
+            cursor: pointer;
+            text-align: center;
+            margin-top: 12px;
+        }
+        .auth-toggle:hover { text-decoration: underline; }
+        .auth-error {
+            color: #e53e3e;
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        /* ===== UPLOAD AREA ===== */
+        .upload-area {
+            border: 2px dashed #ddd;
+            padding: 40px 20px;
+            text-align: center;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #fafafa;
+        }
+        .upload-area:hover { border-color: #667eea; background: #f0f0ff; }
+        .upload-area.dragover { border-color: #48bb78; background: #e8f5e9; }
+        .upload-icon { font-size: 48px; display: block; margin-bottom: 10px; }
+        .upload-area .sub-text { font-size: 13px; color: #999; margin-top: 8px; }
+        input[type="file"] { display: none; }
+
+        /* ===== PROGRESS ===== */
+        #progress {
+            margin-top: 15px;
+            background: #f0f0f0;
+            border-radius: 10px;
+            overflow: hidden;
+            display: none;
+            height: 24px;
+        }
+        #progressBar {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            width: 0%;
+            transition: width 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        /* ===== STATUS ===== */
+        #status {
+            margin-top: 15px;
+            padding: 12px 18px;
+            border-radius: 10px;
+            display: none;
+            font-weight: 500;
+        }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+
+        /* ===== FILE LIST ===== */
+        .file-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .file-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 12px;
+            border-left: 4px solid #667eea;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            transition: all 0.2s;
+        }
+        .file-item:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+        .file-item .file-name { font-weight: 600; font-size: 14px; word-break: break-all; }
+        .file-item .file-size { font-size: 12px; color: #666; }
+        .file-item .file-date { font-size: 11px; color: #999; }
+        .file-item .file-actions { display: flex; gap: 10px; margin-top: 5px; }
+        .file-item .file-actions a { color: #667eea; text-decoration: none; font-size: 13px; }
+        .file-item .file-actions a:hover { text-decoration: underline; }
+
+        .empty-state { text-align: center; padding: 40px; color: #999; }
+        .empty-state .emoji { font-size: 48px; display: block; margin-bottom: 10px; }
+
+        @media (max-width: 600px) {
+            .header { flex-direction: column; align-items: stretch; gap: 10px; }
+            .user-info { justify-content: space-between; }
+            .file-grid { grid-template-columns: 1fr; }
+            .card { padding: 20px; }
+        }
+    </style>
 </head>
 <body>
-  <div class="container">
-    <h1>📤 <span>Upload de Ficheiros</span></h1>
-    
-    <div class="upload-area" id="uploadArea">
-      <span class="upload-icon">📁</span>
-      <p><strong>Clique ou arraste</strong> ficheiros aqui</p>
-      <p class="sub-text">📷 Imagens · 📄 PDFs · 🎥 Vídeos (máx. 50MB)</p>
-      <input type="file" id="fileInput">
+
+    <div class="container">
+
+        <!-- ============ AUTH CARD (Login / Registar) ============ -->
+        <div id="authCard" class="card">
+            <div class="auth-form">
+                <h2 id="authTitle">🔐 Entrar</h2>
+                <div id="authError" class="auth-error hidden"></div>
+                <input type="email" id="authEmail" placeholder="Email" />
+                <input type="password" id="authPassword" placeholder="Palavra-passe" />
+                <button class="btn btn-primary" id="authBtn">Entrar</button>
+                <div class="auth-toggle" id="authToggle">Não tem conta? <strong>Registar</strong></div>
+            </div>
+        </div>
+
+        <!-- ============ DASHBOARD (Após login) ============ -->
+        <div id="dashboardCard" class="card hidden">
+
+            <!-- Header -->
+            <div class="header">
+                <h1>📤 <span>Meus Documentos</span></h1>
+                <div class="user-info">
+                    <span class="user-email" id="userEmail">user@email.com</span>
+                    <div class="user-avatar" id="userAvatar">U</div>
+                    <button class="btn btn-danger btn-sm" id="logoutBtn">Sair</button>
+                </div>
+            </div>
+
+            <!-- Upload Area -->
+            <div class="upload-area" id="uploadArea">
+                <span class="upload-icon">📁</span>
+                <p><strong>Clique ou arraste</strong> ficheiros aqui</p>
+                <p class="sub-text">📷 Imagens · 📄 PDFs · 🎥 Vídeos (máx. 50MB)</p>
+                <input type="file" id="fileInput" />
+            </div>
+
+            <button class="btn btn-success" id="uploadBtn" style="width:100%;margin-top:15px;" disabled>
+                🚀 Enviar Ficheiro
+            </button>
+
+            <div id="progress"><div id="progressBar">0%</div></div>
+            <div id="status"></div>
+
+            <!-- File List -->
+            <h3 style="margin-top:25px; color:#333;">📄 Os meus documentos</h3>
+            <div id="fileList">
+                <div class="empty-state">
+                    <span class="emoji">📭</span>
+                    <p>Nenhum documento enviado ainda.</p>
+                    <p style="font-size:13px; color:#bbb;">Faça upload do seu primeiro ficheiro!</p>
+                </div>
+            </div>
+        </div>
+
     </div>
-    
-    <button id="uploadBtn" onclick="uploadFile()">🚀 Enviar Ficheiro</button>
-    
-    <div id="progress">
-      <div id="progressBar">0%</div>
-    </div>
-    
-    <div id="status"></div>
-    <div id="fileInfo" class="file-info"></div>
-  </div>
 
-  <script>
-    const fileInput = document.getElementById('fileInput');
-    const uploadArea = document.getElementById('uploadArea');
-    const uploadBtn = document.getElementById('uploadBtn');
-    let selectedFile = null;
+    <!-- ============================================================ -->
+    <!-- ======================== JAVASCRIPT ========================= -->
+    <!-- ============================================================ -->
+    <script>
+        // ================================================================
+        // 1. CONFIGURAÇÃO DO FIREBASE (substituir com as tuas credenciais)
+        // ================================================================
+        const firebaseConfig = {
+            apiKey: "AIzaSyB17rpVmAOpk7ywyhzjDveuSazjOS4tmAs",
+            authDomain: "projeto-shares.firebaseapp.com",
+            projectId: "projeto-shares",
+            storageBucket: "projeto-shares.firebasestorage.app",
+            messagingSenderId: "441089104132",
+            appId: "1:441089104132:web:7f3801b287b763904c1851",
+            measurementId: "G-BXL5PRPZ6H"
+        };
 
-    // ========== CLICK ==========
-    uploadArea.addEventListener('click', () => fileInput.click());
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
 
-    // ========== FICHEIRO SELECIONADO ==========
-    fileInput.addEventListener('change', () => {
-      if (fileInput.files.length) {
-        selectedFile = fileInput.files[0];
-        showFileInfo(selectedFile);
-        uploadBtn.disabled = false;
-      }
-    });
+        // ================================================================
+        // 2. ELEMENTOS DOM
+        // ================================================================
+        const authCard = document.getElementById('authCard');
+        const dashboardCard = document.getElementById('dashboardCard');
+        const authTitle = document.getElementById('authTitle');
+        const authEmail = document.getElementById('authEmail');
+        const authPassword = document.getElementById('authPassword');
+        const authBtn = document.getElementById('authBtn');
+        const authToggle = document.getElementById('authToggle');
+        const authError = document.getElementById('authError');
+        const userEmail = document.getElementById('userEmail');
+        const userAvatar = document.getElementById('userAvatar');
+        const logoutBtn = document.getElementById('logoutBtn');
 
-    // ========== DRAG & DROP ==========
-    uploadArea.addEventListener('dragover', (e) => {
-      e.preventDefault();
-      uploadArea.classList.add('dragover');
-    });
+        const fileInput = document.getElementById('fileInput');
+        const uploadArea = document.getElementById('uploadArea');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const fileList = document.getElementById('fileList');
+        const statusDiv = document.getElementById('status');
+        const progressDiv = document.getElementById('progress');
+        const progressBar = document.getElementById('progressBar');
 
-    uploadArea.addEventListener('dragleave', () => {
-      uploadArea.classList.remove('dragover');
-    });
+        let isLogin = true;
+        let selectedFile = null;
+        let currentUser = null;
 
-    uploadArea.addEventListener('drop', (e) => {
-      e.preventDefault();
-      uploadArea.classList.remove('dragover');
-      if (e.dataTransfer.files.length) {
-        selectedFile = e.dataTransfer.files[0];
-        fileInput.files = e.dataTransfer.files;
-        showFileInfo(selectedFile);
-        uploadBtn.disabled = false;
-      }
-    });
+        // ================================================================
+        // 3. AUTH FUNCTIONS
+        // ================================================================
+        function showAuthError(msg) {
+            authError.textContent = msg;
+            authError.classList.remove('hidden');
+        }
+        function clearAuthError() {
+            authError.classList.add('hidden');
+        }
 
-    // ========== MOSTRAR INFO ==========
-    function showFileInfo(file) {
-      const infoDiv = document.getElementById('fileInfo');
-      infoDiv.style.display = 'block';
-      
-      const sizeKB = (file.size / 1024).toFixed(2);
-      const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
-      const sizeDisplay = file.size > 1024 * 1024 ? `${sizeMB} MB` : `${sizeKB} KB`;
-      
-      infoDiv.innerHTML = `
-        <strong>📄 Ficheiro selecionado:</strong>
-        <div class="detail">📌 Nome: <strong>${file.name}</strong></div>
-        <div class="detail">📏 Tamanho: <strong>${sizeDisplay}</strong></div>
-      `;
-    }
+        function toggleAuthMode() {
+            isLogin = !isLogin;
+            authTitle.textContent = isLogin ? '🔐 Entrar' : '📝 Criar Conta';
+            authBtn.textContent = isLogin ? 'Entrar' : 'Registar';
+            authToggle.innerHTML = isLogin ?
+                'Não tem conta? <strong>Registar</strong>' :
+                'Já tem conta? <strong>Entrar</strong>';
+            clearAuthError();
+            authPassword.value = '';
+        }
+        authToggle.addEventListener('click', toggleAuthMode);
 
-    // ========== UPLOAD COM FETCH E PROGRESSO ==========
-    async function uploadFile() {
-      if (!selectedFile) {
-        showStatus('⚠️ Selecione um ficheiro!', 'error');
-        return;
-      }
+        async function handleAuth() {
+            const email = authEmail.value.trim();
+            const password = authPassword.value.trim();
 
-      const formData = new FormData();
-      formData.append('file', selectedFile);
-
-      const statusDiv = document.getElementById('status');
-      const progressDiv = document.getElementById('progress');
-      const progressBar = document.getElementById('progressBar');
-
-      statusDiv.style.display = 'block';
-      statusDiv.className = 'info';
-      statusDiv.textContent = '⏳ A enviar...';
-      uploadBtn.disabled = true;
-      
-      progressDiv.style.display = 'block';
-      progressBar.style.width = '0%';
-      progressBar.textContent = '0%';
-
-      try {
-        // Usar XMLHttpRequest para conseguir progresso real
-        const xhr = new XMLHttpRequest();
-        
-        const result = await new Promise((resolve, reject) => {
-          xhr.open('POST', '/api/upload');
-          
-          xhr.upload.addEventListener('progress', (e) => {
-            if (e.lengthComputable) {
-              const percent = Math.round((e.loaded / e.total) * 100);
-              progressBar.style.width = percent + '%';
-              progressBar.textContent = percent + '%';
+            if (!email || !password) {
+                showAuthError('Preencha todos os campos.');
+                return;
             }
-          });
+            clearAuthError();
 
-          xhr.onload = () => {
-            if (xhr.status >= 200 && xhr.status < 300) {
-              try {
-                resolve(JSON.parse(xhr.responseText));
-              } catch {
-                reject(new Error('Resposta inválida do servidor'));
-              }
-            } else {
-              try {
-                const data = JSON.parse(xhr.responseText);
-                reject(new Error(data.error || data.details || 'Erro no servidor'));
-              } catch {
-                reject(new Error('Erro ' + xhr.status + ': ' + xhr.statusText));
-              }
+            try {
+                authBtn.disabled = true;
+                authBtn.textContent = '⏳ A carregar...';
+
+                if (isLogin) {
+                    await auth.signInWithEmailAndPassword(email, password);
+                } else {
+                    await auth.createUserWithEmailAndPassword(email, password);
+                }
+
+                authBtn.textContent = isLogin ? 'Entrar' : 'Registar';
+                authBtn.disabled = false;
+
+            } catch (error) {
+                authBtn.disabled = false;
+                authBtn.textContent = isLogin ? 'Entrar' : 'Registar';
+                showAuthError(error.message);
             }
-          };
+        }
+        authBtn.addEventListener('click', handleAuth);
 
-          xhr.onerror = () => {
-            reject(new Error('Erro de rede. O servidor está a correr?'));
-          };
+        authEmail.addEventListener('keydown', (e) => { if (e.key === 'Enter') authPassword.focus(); });
+        authPassword.addEventListener('keydown', (e) => { if (e.key === 'Enter') handleAuth(); });
 
-          xhr.send(formData);
+        // ================================================================
+        // 4. LOGOUT
+        // ================================================================
+        logoutBtn.addEventListener('click', async () => {
+            await auth.signOut();
         });
 
-        // Sucesso
-        progressBar.style.width = '100%';
-        progressBar.textContent = '100%';
-        
-        showStatus('✅ Ficheiro enviado com sucesso! 🎉', 'success');
-        
-        const infoDiv = document.getElementById('fileInfo');
-        infoDiv.style.display = 'block';
-        infoDiv.innerHTML = `
-          <strong>✅ Upload concluído!</strong>
-          <div class="detail">📌 Nome: <strong>${result.data.originalName}</strong></div>
-          <div class="detail">📏 Tamanho: <strong>${(result.data.size / 1024).toFixed(2)} KB</strong></div>
-          <div class="detail" style="margin-top:8px;">
-            🔗 <a href="${result.data.url}" target="_blank" class="url-link">📎 Ver ficheiro</a>
-          </div>
-        `;
+        // ================================================================
+        // 5. AUTH STATE CHANGED
+        // ================================================================
+        auth.onAuthStateChanged(async (user) => {
+            if (user) {
+                currentUser = user;
+                console.log('✅ Utilizador autenticado:', user.uid, user.email);
+                authCard.classList.add('hidden');
+                dashboardCard.classList.remove('hidden');
+                userEmail.textContent = user.email;
+                userAvatar.textContent = user.email.charAt(0).toUpperCase();
+                uploadBtn.disabled = true;
+                loadUserFiles();
+            } else {
+                currentUser = null;
+                authCard.classList.remove('hidden');
+                dashboardCard.classList.add('hidden');
+                authEmail.value = '';
+                authPassword.value = '';
+                authEmail.focus();
+            }
+        });
 
-      } catch (error) {
-        console.error('Erro:', error);
-        showStatus('❌ ' + error.message, 'error');
-      } finally {
-        uploadBtn.disabled = false;
-        setTimeout(() => {
-          progressDiv.style.display = 'none';
-          progressBar.style.width = '0%';
-        }, 3000);
-      }
-    }
+        // ================================================================
+        // 6. UPLOAD
+        // ================================================================
+        uploadArea.addEventListener('click', () => fileInput.click());
 
-    function showStatus(message, type) {
-      const statusDiv = document.getElementById('status');
-      statusDiv.style.display = 'block';
-      statusDiv.className = type;
-      statusDiv.textContent = message;
-    }
-  </script>
+        fileInput.addEventListener('change', () => {
+            if (fileInput.files.length) {
+                selectedFile = fileInput.files[0];
+                uploadBtn.disabled = false;
+                showStatus(`📄 Selecionado: ${selectedFile.name} (${(selectedFile.size/1024).toFixed(2)} KB)`, 'info');
+            }
+        });
+
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            if (e.dataTransfer.files.length) {
+                selectedFile = e.dataTransfer.files[0];
+                fileInput.files = e.dataTransfer.files;
+                uploadBtn.disabled = false;
+                showStatus(`📄 Selecionado: ${selectedFile.name} (${(selectedFile.size/1024).toFixed(2)} KB)`, 'info');
+            }
+        });
+
+        uploadBtn.addEventListener('click', async () => {
+            if (!selectedFile) {
+                showStatus('⚠️ Selecione um ficheiro!', 'error');
+                return;
+            }
+            if (!currentUser) {
+                showStatus('⚠️ Faça login primeiro!', 'error');
+                return;
+            }
+
+            console.log('📤 A enviar com UID:', currentUser.uid);
+
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+            formData.append('uid', currentUser.uid);
+
+            uploadBtn.disabled = true;
+            progressDiv.style.display = 'block';
+            progressBar.style.width = '0%';
+            progressBar.textContent = '0%';
+            showStatus('⏳ A enviar...', 'info');
+
+            try {
+                const xhr = new XMLHttpRequest();
+                const result = await new Promise((resolve, reject) => {
+                    xhr.open('POST', '/api/upload');
+                    xhr.upload.addEventListener('progress', (e) => {
+                        if (e.lengthComputable) {
+                            const pct = Math.round((e.loaded / e.total) * 100);
+                            progressBar.style.width = pct + '%';
+                            progressBar.textContent = pct + '%';
+                        }
+                    });
+                    xhr.onload = () => {
+                        if (xhr.status >= 200 && xhr.status < 300) {
+                            try { resolve(JSON.parse(xhr.responseText)); } catch { reject(new Error('Resposta inválida')); }
+                        } else {
+                            try { const d = JSON.parse(xhr.responseText);
+                                reject(new Error(d.error || d.details || 'Erro no servidor')); } catch { reject(new Error('Erro ' + xhr.status)); }
+                        }
+                    };
+                    xhr.onerror = () => reject(new Error('Erro de rede'));
+                    xhr.send(formData);
+                });
+
+                progressBar.style.width = '100%';
+                progressBar.textContent = '100%';
+                showStatus('✅ Ficheiro enviado com sucesso! 🎉', 'success');
+                selectedFile = null;
+                fileInput.value = '';
+                uploadBtn.disabled = true;
+                loadUserFiles();
+
+            } catch (error) {
+                showStatus('❌ ' + error.message, 'error');
+            } finally {
+                uploadBtn.disabled = false;
+                setTimeout(() => {
+                    progressDiv.style.display = 'none';
+                    progressBar.style.width = '0%';
+                }, 3000);
+            }
+        });
+
+        // ================================================================
+        // 7. CARREGAR FICHEIROS DO UTILIZADOR
+        // ================================================================
+        async function loadUserFiles() {
+            if (!currentUser) {
+                console.log('⚠️ Sem utilizador autenticado');
+                return;
+            }
+
+            try {
+                console.log('📄 A carregar ficheiros para UID:', currentUser.uid);
+                const response = await fetch(`/api/files?uid=${currentUser.uid}`);
+                const data = await response.json();
+                console.log('📦 Resposta da API:', data);
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Erro ao carregar ficheiros');
+                }
+
+                renderFileList(data.files || []);
+
+            } catch (error) {
+                console.error('❌ Erro ao carregar ficheiros:', error);
+                fileList.innerHTML = `
+                    <div class="empty-state">
+                        <span class="emoji">⚠️</span>
+                        <p>Erro ao carregar ficheiros: ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        // ================================================================
+        // 8. RENDERIZAR LISTA DE FICHEIROS
+        // ================================================================
+        function renderFileList(files) {
+            console.log('📄 A renderizar', files.length, 'ficheiros');
+            
+            if (!files || files.length === 0) {
+                fileList.innerHTML = `
+                    <div class="empty-state">
+                        <span class="emoji">📭</span>
+                        <p>Nenhum documento enviado ainda.</p>
+                        <p style="font-size:13px; color:#bbb;">Faça upload do seu primeiro ficheiro!</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '<div class="file-grid">';
+            files.forEach((file) => {
+                const sizeKB = (file.size / 1024).toFixed(2);
+                const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+                const sizeDisplay = file.size > 1024 * 1024 ? `${sizeMB} MB` : `${sizeKB} KB`;
+                const date = new Date(file.uploadedAt).toLocaleDateString('pt-PT');
+
+                html += `
+                    <div class="file-item">
+                        <div class="file-name">📄 ${file.originalName}</div>
+                        <div class="file-size">📏 ${sizeDisplay}</div>
+                        <div class="file-date">📅 ${date}</div>
+                        <div class="file-actions">
+                            <a href="${file.url}" target="_blank">🔗 Ver</a>
+                            <button class="btn-danger-sm" onclick="deleteFile('${file.fileName}')">🗑️</button>
+                        </div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+            fileList.innerHTML = html;
+        }
+
+        // ================================================================
+        // 9. ELIMINAR FICHEIRO
+        // ================================================================
+        async function deleteFile(fileName) {
+            if (!confirm('Tem a certeza que pretende eliminar este ficheiro?')) return;
+            if (!currentUser) return;
+
+            try {
+                const response = await fetch('/api/delete', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ fileName, uid: currentUser.uid })
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                    showStatus('✅ Ficheiro eliminado!', 'success');
+                    loadUserFiles();
+                } else {
+                    showStatus('❌ ' + (data.error || 'Erro ao eliminar'), 'error');
+                }
+            } catch (error) {
+                showStatus('❌ ' + error.message, 'error');
+            }
+        }
+
+        // ================================================================
+        // 10. STATUS HELPER
+        // ================================================================
+        function showStatus(message, type) {
+            statusDiv.style.display = 'block';
+            statusDiv.className = type;
+            statusDiv.textContent = message;
+        }
+    </script>
+
 </body>
 </html>
