@@ -1,3 +1,5 @@
 node_modules/
 .env
 firebase-adminsdk.json
+*.log
+.DS_Store
