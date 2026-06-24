@@ -28,7 +28,6 @@
       box-shadow: 0 20px 60px rgba(0,0,0,0.3);
       max-width: 550px;
       width: 100%;
-      transition: all 0.3s;
     }
     
     h1 {
@@ -40,12 +39,8 @@
     
     h1 span {
       background: linear-gradient(135deg, #667eea, #764ba2);
-      /* Standard property for compatibility */
-      background-clip: text;
-      /* WebKit-prefixed properties for broader support */
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
-      color: transparent;
     }
     
     .upload-area {
@@ -56,24 +51,20 @@
       cursor: pointer;
       transition: all 0.3s;
       background: #fafafa;
-      position: relative;
     }
     
     .upload-area:hover {
       border-color: #667eea;
       background: #f0f0ff;
-      transform: translateY(-2px);
     }
     
     .upload-area.dragover {
       border-color: #4CAF50;
       background: #e8f5e9;
-      transform: scale(1.02);
     }
     
     .upload-icon {
       font-size: 56px;
-      margin-bottom: 10px;
       display: block;
     }
     
@@ -104,7 +95,6 @@
       margin-top: 25px;
       width: 100%;
       transition: all 0.3s;
-      letter-spacing: 0.5px;
     }
     
     button:hover:not(:disabled) {
@@ -115,13 +105,11 @@
     button:disabled {
       background: #ccc;
       cursor: not-allowed;
-      transform: none;
-      box-shadow: none;
     }
     
     #status {
       margin-top: 20px;
-      padding: 15px 18px;
+      padding: 15px;
       border-radius: 12px;
       display: none;
       font-weight: 500;
@@ -155,12 +143,6 @@
       border-left: 4px solid #667eea;
     }
     
-    .file-info strong {
-      color: #333;
-      display: block;
-      margin-bottom: 8px;
-    }
-    
     .file-info .detail {
       padding: 3px 0;
       color: #555;
@@ -179,46 +161,23 @@
       height: 100%;
       background: linear-gradient(90deg, #667eea, #764ba2);
       width: 0%;
-      transition: width 0.3s ease;
+      transition: width 0.3s;
       display: flex;
       align-items: center;
       justify-content: center;
       color: white;
       font-size: 13px;
       font-weight: 600;
-      border-radius: 10px;
     }
     
     .url-link {
       color: #667eea;
       text-decoration: none;
       word-break: break-all;
-      font-weight: 500;
     }
     
     .url-link:hover {
       text-decoration: underline;
-    }
-    
-    .success-icon {
-      font-size: 20px;
-      margin-right: 8px;
-    }
-    
-    /* Responsivo */
-    @media (max-width: 480px) {
-      .container {
-        padding: 25px;
-      }
-      h1 {
-        font-size: 22px;
-      }
-      .upload-area {
-        padding: 30px 15px;
-      }
-      .upload-icon {
-        font-size: 40px;
-      }
     }
   </style>
 </head>
@@ -249,7 +208,7 @@
     const uploadBtn = document.getElementById('uploadBtn');
     let selectedFile = null;
 
-    // ========== CLICK NA ÁREA ==========
+    // ========== CLICK ==========
     uploadArea.addEventListener('click', () => fileInput.click());
 
     // ========== FICHEIRO SELECIONADO ==========
@@ -282,7 +241,7 @@
       }
     });
 
-    // ========== MOSTRAR INFORMAÇÃO DO FICHEIRO ==========
+    // ========== MOSTRAR INFO ==========
     function showFileInfo(file) {
       const infoDiv = document.getElementById('fileInfo');
       infoDiv.style.display = 'block';
@@ -291,23 +250,17 @@
       const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
       const sizeDisplay = file.size > 1024 * 1024 ? `${sizeMB} MB` : `${sizeKB} KB`;
       
-      const fileType = file.type || 'Desconhecido';
-      const icon = file.type.startsWith('image/') ? '🖼️' : 
-                   file.type === 'application/pdf' ? '📄' : 
-                   file.type.startsWith('video/') ? '🎬' : '📎';
-      
       infoDiv.innerHTML = `
-        <strong>${icon} Ficheiro selecionado:</strong>
+        <strong>📄 Ficheiro selecionado:</strong>
         <div class="detail">📌 Nome: <strong>${file.name}</strong></div>
         <div class="detail">📏 Tamanho: <strong>${sizeDisplay}</strong></div>
-        <div class="detail">📁 Tipo: <strong>${fileType}</strong></div>
       `;
     }
 
-    // ========== FUNÇÃO PRINCIPAL DE UPLOAD ==========
+    // ========== UPLOAD COM FETCH E PROGRESSO ==========
     async function uploadFile() {
       if (!selectedFile) {
-        showStatus('⚠️ Por favor, selecione um ficheiro!', 'error');
+        showStatus('⚠️ Selecione um ficheiro!', 'error');
         return;
       }
 
@@ -317,12 +270,10 @@
       const statusDiv = document.getElementById('status');
       const progressDiv = document.getElementById('progress');
       const progressBar = document.getElementById('progressBar');
-      const infoDiv = document.getElementById('fileInfo');
 
-      // Reset
       statusDiv.style.display = 'block';
       statusDiv.className = 'info';
-      statusDiv.innerHTML = '⏳ A enviar ficheiro...';
+      statusDiv.textContent = '⏳ A enviar...';
       uploadBtn.disabled = true;
       
       progressDiv.style.display = 'block';
@@ -330,12 +281,12 @@
       progressBar.textContent = '0%';
 
       try {
-        // Usar XMLHttpRequest para progresso
+        // Usar XMLHttpRequest para conseguir progresso real
         const xhr = new XMLHttpRequest();
-        const uploadPromise = new Promise((resolve, reject) => {
+        
+        const result = await new Promise((resolve, reject) => {
           xhr.open('POST', '/api/upload');
           
-          // Progresso do upload
           xhr.upload.addEventListener('progress', (e) => {
             if (e.lengthComputable) {
               const percent = Math.round((e.loaded / e.total) * 100);
@@ -346,42 +297,48 @@
 
           xhr.onload = () => {
             if (xhr.status >= 200 && xhr.status < 300) {
-              resolve(JSON.parse(xhr.responseText));
+              try {
+                resolve(JSON.parse(xhr.responseText));
+              } catch {
+                reject(new Error('Resposta inválida do servidor'));
+              }
             } else {
               try {
-                const errorData = JSON.parse(xhr.responseText);
-                reject(new Error(errorData.error || errorData.details || 'Erro no servidor'));
+                const data = JSON.parse(xhr.responseText);
+                reject(new Error(data.error || data.details || 'Erro no servidor'));
               } catch {
                 reject(new Error('Erro ' + xhr.status + ': ' + xhr.statusText));
               }
             }
           };
-          
-          xhr.onerror = () => reject(new Error('Erro de rede. Verifique a ligação ao servidor.'));
+
+          xhr.onerror = () => {
+            reject(new Error('Erro de rede. O servidor está a correr?'));
+          };
+
           xhr.send(formData);
         });
 
-        const data = await uploadPromise;
-        
         // Sucesso
         progressBar.style.width = '100%';
         progressBar.textContent = '100%';
         
         showStatus('✅ Ficheiro enviado com sucesso! 🎉', 'success');
         
+        const infoDiv = document.getElementById('fileInfo');
         infoDiv.style.display = 'block';
         infoDiv.innerHTML = `
           <strong>✅ Upload concluído!</strong>
-          <div class="detail">📌 Nome original: <strong>${data.data.originalName}</strong></div>
-          <div class="detail">📏 Tamanho: <strong>${(data.data.size / 1024).toFixed(2)} KB</strong></div>
+          <div class="detail">📌 Nome: <strong>${result.data.originalName}</strong></div>
+          <div class="detail">📏 Tamanho: <strong>${(result.data.size / 1024).toFixed(2)} KB</strong></div>
           <div class="detail" style="margin-top:8px;">
-            🔗 <a href="${data.data.url}" target="_blank" class="url-link">📎 Ver ficheiro</a>
+            🔗 <a href="${result.data.url}" target="_blank" class="url-link">📎 Ver ficheiro</a>
           </div>
         `;
 
       } catch (error) {
-        console.error('Erro detalhado:', error);
-        showStatus('❌ Erro ao enviar: ' + error.message, 'error');
+        console.error('Erro:', error);
+        showStatus('❌ ' + error.message, 'error');
       } finally {
         uploadBtn.disabled = false;
         setTimeout(() => {
@@ -391,12 +348,11 @@
       }
     }
 
-    // ========== MOSTRAR STATUS ==========
     function showStatus(message, type) {
       const statusDiv = document.getElementById('status');
       statusDiv.style.display = 'block';
       statusDiv.className = type;
-      statusDiv.innerHTML = message;
+      statusDiv.textContent = message;
     }
   </script>
 </body>
