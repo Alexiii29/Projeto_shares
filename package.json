@@ -1,0 +1,28 @@
+{
+  "name": "projeto_shares",
+  "version": "1.0.0",
+  "description": "",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "firebase-admin": "^10.3.0",
+    "multer": "^2.2.0"
+  },
+  "allowScripts": {
+    "@firebase/util@1.15.1": true,
+    "protobufjs@6.11.3": true,
+    "protobufjs@6.11.6": true
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  }
+}
