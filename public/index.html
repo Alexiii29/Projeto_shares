@@ -17,7 +17,7 @@
             min-height: 100vh;
             padding: 20px;
         }
-        .container { max-width: 900px; margin: 0 auto; }
+        .container { max-width: 1000px; margin: 0 auto; }
         .card {
             background: white;
             border-radius: 20px;
@@ -39,7 +39,6 @@
         .header h1 { font-size: 24px; color: #333; }
         .header h1 span {
             background: linear-gradient(135deg, #667eea, #764ba2);
-            background-clip: text;
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
@@ -168,13 +167,14 @@
         .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
         .info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
 
-        /* ===== FILE LIST ===== */
+        /* ===== FILE LIST (COM PREVIEW) ===== */
         .file-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-            gap: 15px;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
             margin-top: 15px;
         }
+
         .file-item {
             background: #f8f9fa;
             padding: 15px;
@@ -182,25 +182,93 @@
             border-left: 4px solid #667eea;
             display: flex;
             flex-direction: column;
-            gap: 6px;
+            gap: 4px;
             transition: all 0.2s;
         }
-        .file-item:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
-        .file-item .file-name { font-weight: 600; font-size: 14px; word-break: break-all; }
+        .file-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+
+        /* ===== PREVIEW ===== */
+        .file-preview {
+            width: 100%;
+            height: 150px;
+            background: #f0f0f0;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            margin-bottom: 8px;
+            position: relative;
+        }
+        .file-preview-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 8px;
+        }
+        .file-preview-video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 8px;
+        }
+        .file-preview-icon {
+            font-size: 48px;
+            color: #667eea;
+        }
+
+        .file-item .file-name {
+            font-weight: 600;
+            font-size: 14px;
+            word-break: break-all;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
         .file-item .file-size { font-size: 12px; color: #666; }
         .file-item .file-date { font-size: 11px; color: #999; }
-        .file-item .file-actions { display: flex; gap: 10px; margin-top: 5px; }
-        .file-item .file-actions a { color: #667eea; text-decoration: none; font-size: 13px; }
-        .file-item .file-actions a:hover { text-decoration: underline; }
+        .file-item .file-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 5px;
+            flex-wrap: wrap;
+        }
 
-        .empty-state { text-align: center; padding: 40px; color: #999; }
+        .btn-download {
+            background: #667eea;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.2s;
+            border: none;
+            cursor: pointer;
+        }
+        .btn-download:hover {
+            background: #5a67d8;
+            transform: translateY(-1px);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
         .empty-state .emoji { font-size: 48px; display: block; margin-bottom: 10px; }
 
         @media (max-width: 600px) {
             .header { flex-direction: column; align-items: stretch; gap: 10px; }
             .user-info { justify-content: space-between; }
-            .file-grid { grid-template-columns: 1fr; }
+            .file-grid { grid-template-columns: 1fr 1fr; }
             .card { padding: 20px; }
+        }
+        @media (max-width: 400px) {
+            .file-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
@@ -523,11 +591,11 @@
         }
 
         // ================================================================
-        // 8. RENDERIZAR LISTA DE FICHEIROS
+        // 8. RENDERIZAR LISTA DE FICHEIROS (COM PREVIEW)
         // ================================================================
         function renderFileList(files) {
             console.log('📄 A renderizar', files.length, 'ficheiros');
-            
+
             if (!files || files.length === 0) {
                 fileList.innerHTML = `
                     <div class="empty-state">
@@ -546,13 +614,35 @@
                 const sizeDisplay = file.size > 1024 * 1024 ? `${sizeMB} MB` : `${sizeKB} KB`;
                 const date = new Date(file.uploadedAt).toLocaleDateString('pt-PT');
 
+                // Determinar o tipo de ficheiro
+                const fileExtension = file.originalName.split('.').pop().toLowerCase();
+                const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'].includes(fileExtension);
+                const isVideo = ['mp4', 'webm', 'ogg', 'avi', 'mov'].includes(fileExtension);
+                const isPDF = fileExtension === 'pdf';
+                const isAudio = ['mp3', 'wav', 'ogg', 'aac'].includes(fileExtension);
+
+                // Escolher pré-visualização
+                let previewHtml = '';
+                if (isImage) {
+                    previewHtml = `<img src="${file.url}" alt="${file.originalName}" class="file-preview-image" loading="lazy" />`;
+                } else if (isVideo) {
+                    previewHtml = `<video src="${file.url}" class="file-preview-video" muted></video>`;
+                } else if (isPDF) {
+                    previewHtml = `<div class="file-preview-icon">📄</div>`;
+                } else if (isAudio) {
+                    previewHtml = `<div class="file-preview-icon">🎵</div>`;
+                } else {
+                    previewHtml = `<div class="file-preview-icon">📎</div>`;
+                }
+
                 html += `
                     <div class="file-item">
-                        <div class="file-name">📄 ${file.originalName}</div>
+                        <div class="file-preview">${previewHtml}</div>
+                        <div class="file-name" title="${file.originalName}">${file.originalName}</div>
                         <div class="file-size">📏 ${sizeDisplay}</div>
                         <div class="file-date">📅 ${date}</div>
                         <div class="file-actions">
-                            <a href="${file.url}" target="_blank">🔗 Ver</a>
+                            <a href="${file.url}" download class="btn-download">📥 Download</a>
                             <button class="btn-danger-sm" onclick="deleteFile('${file.fileName}')">🗑️</button>
                         </div>
                     </div>
