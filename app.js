@@ -66,6 +66,7 @@ function getAccessToken() {
             iat: now
         };
 
+        
       
         function generateJWT(payload, privateKey) {
     // Header
@@ -119,6 +120,7 @@ function getAccessToken() {
         req.end();
     });
 }
+const token = generateJWT(payload, serviceAccount.private_key);
 
 // ========== FUNÇÃO PARA FAZER UPLOAD (COM NOME ENCRIPTADO) ==========
 async function uploadToFirebase(fileBuffer, originalName, mimetype, uid) {
