@@ -3,7 +3,6 @@ const http = require('http');
 const path = require('path');
 const fs = require('fs');
 const https = require('https');
-
 const crypto = require('crypto');
 
 const PORT = process.env.PORT || 3000;
@@ -32,17 +31,30 @@ function writeMetadata(metadata) {
     }
 }
 
-// ========== FUNÇÃO PARA GERAR NOME ENCRIPTADO ==========
-function generateEncryptedName(originalName, uid) {
-    const timestamp = Date.now();
-    const random = Math.round(Math.random() * 10000);
-    // Criar um hash do nome original + timestamp + uid
-    const hash = crypto.createHash('sha256')
-        .update(`${originalName}-${timestamp}-${uid}-${random}`)
-        .digest('hex')
-        .substring(0, 16); // usar apenas 16 caracteres para não ficar muito longo
-    const extension = path.extname(originalName);
-    return `${hash}-${timestamp}${extension}`;
+// ========== FUNÇÃO PARA GERAR JWT SEM jsonwebtoken ==========
+function generateJWT(payload, privateKey) {
+    const header = { alg: 'RS256', typ: 'JWT' };
+    const encodedHeader = Buffer.from(JSON.stringify(header))
+        .toString('base64')
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=+$/, '');
+
+    const encodedPayload = Buffer.from(JSON.stringify(payload))
+        .toString('base64')
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=+$/, '');
+
+    const signer = crypto.createSign('RSA-SHA256');
+    signer.update(`${encodedHeader}.${encodedPayload}`);
+    signer.end();
+    const signature = signer.sign(privateKey, 'base64')
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=+$/, '');
+
+    return `${encodedHeader}.${encodedPayload}.${signature}`;
 }
 
 // ========== FUNÇÃO PARA OBTER TOKEN OAuth2 ==========
@@ -66,24 +78,9 @@ function getAccessToken() {
             iat: now
         };
 
-        
-      
-        function generateJWT(payload, privateKey) {
-    // Header
-    const header = { alg: 'RS256', typ: 'JWT' };
-    const encodedHeader = Buffer.from(JSON.stringify(header)).toString('base64url');
+        // Usar a função nativa em vez de jwt.sign
+        const token = generateJWT(payload, serviceAccount.private_key);
 
-    // Payload
-    const encodedPayload = Buffer.from(JSON.stringify(payload)).toString('base64url');
-
-    // Assinatura
-    const signer = crypto.createSign('RSA-SHA256');
-    signer.write(`${encodedHeader}.${encodedPayload}`);
-    signer.end();
-    const signature = signer.sign(privateKey, 'base64url');
-
-    return `${encodedHeader}.${encodedPayload}.${signature}`;
-}
         const postData = `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${token}`;
         const options = {
             hostname: 'oauth2.googleapis.com',
@@ -120,13 +117,23 @@ function getAccessToken() {
         req.end();
     });
 }
-const token = generateJWT(payload, serviceAccount.private_key);
+
+// ========== FUNÇÃO PARA GERAR NOME ENCRIPTADO ==========
+function generateEncryptedName(originalName, uid) {
+    const timestamp = Date.now();
+    const random = Math.round(Math.random() * 10000);
+    const hash = crypto.createHash('sha256')
+        .update(`${originalName}-${timestamp}-${uid}-${random}`)
+        .digest('hex')
+        .substring(0, 16);
+    const extension = path.extname(originalName);
+    return `${hash}-${timestamp}${extension}`;
+}
 
 // ========== FUNÇÃO PARA FAZER UPLOAD (COM NOME ENCRIPTADO) ==========
 async function uploadToFirebase(fileBuffer, originalName, mimetype, uid) {
     const token = await getAccessToken();
 
-    // Gerar nome encriptado
     const encryptedName = generateEncryptedName(originalName, uid);
     const newFileName = `users/${uid}/${encryptedName}`;
 
@@ -168,7 +175,7 @@ async function uploadToFirebase(fileBuffer, originalName, mimetype, uid) {
         req.end();
     });
 
-    // ===== GUARDAR METADADOS =====
+    // Guardar metadados
     const metadata = readMetadata();
     if (!metadata[uid]) metadata[uid] = {};
     metadata[uid][encryptedName] = {
@@ -222,7 +229,6 @@ async function listUserFiles(uid, token) {
                         return;
                     }
 
-                    // Carregar metadados locais
                     const metadata = readMetadata();
                     const userMetadata = metadata[uid] || {};
 
@@ -234,7 +240,7 @@ async function listUserFiles(uid, token) {
                         return {
                             fileName: fullPath,
                             encryptedName: encryptedName,
-                            originalName: meta.originalName || encryptedName, // fallback
+                            originalName: meta.originalName || encryptedName,
                             size: parseInt(item.size || 0),
                             url: `https://storage.googleapis.com/${BUCKET_NAME}/${fullPath}`,
                             uploadedAt: meta.uploadedAt || new Date().toISOString()
@@ -258,7 +264,6 @@ async function listUserFiles(uid, token) {
 
 // ========== FUNÇÃO PARA ELIMINAR FICHEIRO (E METADADOS) ==========
 async function deleteFile(fileName, uid, token) {
-    // Eliminar do Storage
     const url = `https://storage.googleapis.com/storage/v1/b/${BUCKET_NAME}/o/${encodeURIComponent(fileName)}`;
     await new Promise((resolve, reject) => {
         const options = {
@@ -287,7 +292,6 @@ async function deleteFile(fileName, uid, token) {
         req.end();
     });
 
-    // Eliminar metadados locais
     const encryptedName = fileName.split('/').pop();
     const metadata = readMetadata();
     if (metadata[uid] && metadata[uid][encryptedName]) {
@@ -497,10 +501,16 @@ const server = http.createServer(async (req, res) => {
     res.end(JSON.stringify({ error: 'Rota não encontrada' }));
 });
 
-server.listen(PORT, () => {
-    console.log(`🚀 Servidor HTTP puro em http://localhost:${PORT}`);
-    console.log(`📤 Upload: POST http://localhost:${PORT}/api/upload`);
-    console.log(`📄 Listar: GET http://localhost:${PORT}/api/files?uid=...`);
-    console.log(`🗑️ Eliminar: DELETE http://localhost:${PORT}/api/delete`);
-    console.log(`🏥 Health: GET http://localhost:${PORT}/api/health`);
-});
+// Exportar para uso em Cloud Functions (opcional)
+module.exports = { server };
+
+// Se for executado diretamente (não importado), iniciar o servidor
+if (require.main === module) {
+    server.listen(PORT, () => {
+        console.log(`🚀 Servidor HTTP puro em http://localhost:${PORT}`);
+        console.log(`📤 Upload: POST http://localhost:${PORT}/api/upload`);
+        console.log(`📄 Listar: GET http://localhost:${PORT}/api/files?uid=...`);
+        console.log(`🗑️ Eliminar: DELETE http://localhost:${PORT}/api/delete`);
+        console.log(`🏥 Health: GET http://localhost:${PORT}/api/health`);
+    });
+}

@@ -8,20 +8,10 @@
     "dev": "nodemon app.js"
   },
   "dependencies": {
-    "dotenv": "^16.3.1",
-    "firebase-admin": "^14.0.0",
-    "firebase-tools": "^15.22.3",
-    "googleapis": "^173.0.0"
-    
+    "dotenv": "^16.3.1"
   },
   "devDependencies": {
     "nodemon": "^3.0.1"
   },
-  "license": "ISC",
-  "allowScripts": {
-    "protobufjs@7.2.4": true,
-    "protobufjs@7.6.4": true,
-    "@firebase/util@1.15.1": true,
-    "re2@1.25.0": true
-  }
+  "license": "ISC"
 }
