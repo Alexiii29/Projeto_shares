@@ -3,7 +3,7 @@ const http = require('http');
 const path = require('path');
 const fs = require('fs');
 const https = require('https');
-const jwt = require('jsonwebtoken');
+
 const crypto = require('crypto');
 
 const PORT = process.env.PORT || 3000;
@@ -66,8 +66,23 @@ function getAccessToken() {
             iat: now
         };
 
-        const token = jwt.sign(payload, serviceAccount.private_key, { algorithm: 'RS256' });
+      
+        function generateJWT(payload, privateKey) {
+    // Header
+    const header = { alg: 'RS256', typ: 'JWT' };
+    const encodedHeader = Buffer.from(JSON.stringify(header)).toString('base64url');
 
+    // Payload
+    const encodedPayload = Buffer.from(JSON.stringify(payload)).toString('base64url');
+
+    // Assinatura
+    const signer = crypto.createSign('RSA-SHA256');
+    signer.write(`${encodedHeader}.${encodedPayload}`);
+    signer.end();
+    const signature = signer.sign(privateKey, 'base64url');
+
+    return `${encodedHeader}.${encodedPayload}.${signature}`;
+}
         const postData = `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${token}`;
         const options = {
             hostname: 'oauth2.googleapis.com',
