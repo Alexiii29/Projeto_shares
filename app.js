@@ -62,12 +62,29 @@ function getAccessToken() {
     return new Promise((resolve, reject) => {
         const serviceAccountPath = path.join(__dirname, 'firebase-adminsdk.json');
         let serviceAccount;
-        try {
-            serviceAccount = require(serviceAccountPath);
-        } catch (error) {
-            reject(new Error('Ficheiro de credenciais não encontrado: ' + error.message));
-            return;
-        }
+try {
+    // Tentar ler do ficheiro (apenas para desenvolvimento local)
+    const fs = require('fs');
+    const path = require('path');
+    const localPath = path.join(__dirname, 'firebase-adminsdk.json');
+    if (fs.existsSync(localPath)) {
+        serviceAccount = require(localPath);
+        console.log('✅ Credenciais carregadas do ficheiro local.');
+    } else {
+        // Em produção (Render), usar variáveis de ambiente
+        serviceAccount = {
+            type: 'service_account',
+            project_id: process.env.FIREBASE_PROJECT_ID,
+            private_key: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+            client_email: process.env.FIREBASE_CLIENT_EMAIL,
+            token_uri: 'https://oauth2.googleapis.com/token',
+        };
+        console.log('✅ Credenciais carregadas das variáveis de ambiente.');
+    }
+} catch (error) {
+    console.error('❌ Erro ao carregar credenciais:', error.message);
+    process.exit(1);
+}
 
         const now = Math.floor(Date.now() / 1000);
         const payload = {
