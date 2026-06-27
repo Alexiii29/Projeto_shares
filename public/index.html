@@ -331,10 +331,15 @@
 <!-- ============================================================ -->
 <script>
   // ================================================================
-  // 1. CONFIGURAÇÃO DO FIREBASE (substituir com as tuas credenciais)
+  // 0. URL DO BACKEND 
+  // ================================================================
+  const API_BASE = 'https://projeto-shares.onrender.com'; 
+
+  // ================================================================
+  // 1. CONFIGURAÇÃO DO FIREBASE 
   // ================================================================
   const firebaseConfig = {
-      apiKey: "AIzaSyB17rpVmAOpk7ywyhzjDveuSazjOS4tmAs",  // <-- substitui pela tua
+      apiKey: "AIzaSyB17rpVmAOpk7ywyhzjDveuSazjOS4tmAs",
       authDomain: "projeto-shares.firebaseapp.com",
       projectId: "projeto-shares",
       storageBucket: "projeto-shares.firebasestorage.app",
@@ -460,7 +465,7 @@
   });
 
   // ================================================================
-  // 6. UPLOAD
+  // 6. UPLOAD (com API_BASE)
   // ================================================================
   uploadArea.addEventListener('click', () => fileInput.click());
 
@@ -515,7 +520,7 @@
       try {
           const xhr = new XMLHttpRequest();
           const result = await new Promise((resolve, reject) => {
-              xhr.open('POST', '/api/upload');
+              xhr.open('POST', `${API_BASE}/api/upload`);
               xhr.upload.addEventListener('progress', (e) => {
                   if (e.lengthComputable) {
                       const pct = Math.round((e.loaded / e.total) * 100);
@@ -555,7 +560,7 @@
   });
 
   // ================================================================
-  // 7. CARREGAR FICHEIROS DO UTILIZADOR
+  // 7. CARREGAR FICHEIROS DO UTILIZADOR (com API_BASE)
   // ================================================================
   async function loadUserFiles() {
       if (!currentUser) {
@@ -565,7 +570,7 @@
 
       try {
           console.log('📄 A carregar ficheiros para UID:', currentUser.uid);
-          const response = await fetch(`/api/files?uid=${currentUser.uid}`);
+          const response = await fetch(`${API_BASE}/api/files?uid=${currentUser.uid}`);
           const data = await response.json();
           console.log('📦 Resposta da API:', data);
 
@@ -610,14 +615,12 @@
           const sizeDisplay = file.size > 1024 * 1024 ? `${sizeMB} MB` : `${sizeKB} KB`;
           const date = new Date(file.uploadedAt).toLocaleDateString('pt-PT');
 
-          // Determinar o tipo de ficheiro
           const fileExtension = file.originalName.split('.').pop().toLowerCase();
           const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'].includes(fileExtension);
           const isVideo = ['mp4', 'webm', 'ogg', 'avi', 'mov'].includes(fileExtension);
           const isPDF = fileExtension === 'pdf';
           const isAudio = ['mp3', 'wav', 'ogg', 'aac'].includes(fileExtension);
 
-          // Escolher pré-visualização
           let previewHtml = '';
           if (isImage) {
               previewHtml = `<img src="${file.url}" alt="${file.originalName}" class="file-preview-image" loading="lazy" />`;
@@ -649,14 +652,14 @@
   }
 
   // ================================================================
-  // 9. ELIMINAR FICHEIRO
+  // 9. ELIMINAR FICHEIRO (com API_BASE)
   // ================================================================
   async function deleteFile(fileName) {
       if (!confirm('Tem a certeza que pretende eliminar este ficheiro?')) return;
       if (!currentUser) return;
 
       try {
-          const response = await fetch('/api/delete', {
+          const response = await fetch(`${API_BASE}/api/delete`, {
               method: 'DELETE',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ fileName, uid: currentUser.uid })
