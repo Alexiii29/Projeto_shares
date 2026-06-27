@@ -3,3 +3,4 @@ node_modules/
 firebase-adminsdk.json
 *.log
 .DS_Store
+.agents
