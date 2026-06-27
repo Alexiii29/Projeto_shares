@@ -31,7 +31,7 @@ function writeMetadata(metadata) {
     }
 }
 
-// ========== FUNÇÃO PARA GERAR JWT SEM jsonwebtoken ==========
+// ========== FUNÇÃO PARA GERAR JWT  ==========
 function generateJWT(payload, privateKey) {
     const header = { alg: 'RS256', typ: 'JWT' };
     const encodedHeader = Buffer.from(JSON.stringify(header))
