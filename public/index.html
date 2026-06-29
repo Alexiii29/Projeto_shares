@@ -562,7 +562,7 @@
     <h3>📂 Mover ficheiro</h3>
     <p id="moveFileName">Ficheiro: </p>
     <select id="moveDestSelect">
-      <option value="">Raiz</option>
+      <!-- As opções são preenchidas dinamicamente, sem "Raiz" -->
     </select>
     <div class="modal-actions">
       <button class="btn btn-sm" id="moveCancelBtn" style="background: #ccc;">Cancelar</button>
@@ -1127,11 +1127,11 @@
   });
 
   // ================================================================
-  // 17. MOVER FICHEIRO (Modal)
+  // 17. MOVER FICHEIRO (Modal - sem opção "Raiz")
   // ================================================================
   function openMoveModal(fileName, currentFolder) {
     currentMoveFile = { fileName, currentFolder };
-    // Preencher o select com as pastas disponíveis (exceto a atual)
+    // Recolher pastas disponíveis (excluindo a atual)
     const folders = [];
     allFiles.forEach(f => {
       const parts = f.fileName.split('/');
@@ -1142,19 +1142,31 @@
         }
       }
     });
-    while (moveDestSelect.options.length > 1) {
-      moveDestSelect.remove(1);
+
+    // Limpar opções (remover todas)
+    while (moveDestSelect.options.length > 0) {
+      moveDestSelect.remove(0);
     }
-    folders.forEach(f => {
+
+    if (folders.length === 0) {
       const opt = document.createElement('option');
-      opt.value = f;
-      opt.textContent = f;
+      opt.value = '';
+      opt.textContent = '⚠️ Sem pastas disponíveis';
+      opt.disabled = true;
       moveDestSelect.appendChild(opt);
-    });
-    // Se houver pastas, selecionar a primeira
-    if (folders.length > 0) {
+      moveConfirmBtn.disabled = true;
+    } else {
+      folders.forEach(f => {
+        const opt = document.createElement('option');
+        opt.value = f;
+        opt.textContent = f;
+        moveDestSelect.appendChild(opt);
+      });
+      // Selecionar a primeira pasta
       moveDestSelect.value = folders[0];
+      moveConfirmBtn.disabled = false;
     }
+
     const name = fileName.split('/').pop();
     moveFileName.textContent = `Ficheiro: ${name}`;
     moveModal.style.display = 'flex';
@@ -1166,8 +1178,15 @@
   });
 
   moveConfirmBtn.addEventListener('click', async () => {
-    if (!currentMoveFile) return;
+    if (!currentMoveFile) {
+      showStatus('⚠️ Nenhum ficheiro selecionado para mover.', 'error');
+      return;
+    }
     const destFolder = moveDestSelect.value;
+    if (!destFolder) {
+      showStatus('⚠️ Selecione uma pasta de destino.', 'error');
+      return;
+    }
     const { fileName } = currentMoveFile;
     try {
       const response = await fetch(`${API_BASE}/api/move`, {
@@ -1182,7 +1201,7 @@
         currentMoveFile = null;
         loadUserFiles();
       } else {
-        showStatus('❌ ' + (data.error || 'Erro ao mover'), 'error');
+        showStatus('❌ ' + (data.error || data.message || 'Erro ao mover'), 'error');
       }
     } catch (error) {
       showStatus('❌ ' + error.message, 'error');
