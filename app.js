@@ -4,30 +4,67 @@ const path = require('path');
 const fs = require('fs');
 const https = require('https');
 const crypto = require('crypto');
+const admin = require('firebase-admin');
 
 const PORT = process.env.PORT || 3000;
 
 // ========== CONFIGURAÇÃO ==========
 const BUCKET_NAME = process.env.FIREBASE_STORAGE_BUCKET || 'projeto-shares.firebasestorage.app';
-const METADATA_FILE = path.join(__dirname, 'file-metadata.json');
 
-// ========== FUNÇÕES PARA METADADOS ==========
-function readMetadata() {
-    try {
-        if (fs.existsSync(METADATA_FILE)) {
-            return JSON.parse(fs.readFileSync(METADATA_FILE, 'utf8'));
-        }
-    } catch (e) {
-        console.error('Erro ao ler metadados:', e.message);
-    }
-    return {};
+// ========== INICIALIZAR FIREBASE ADMIN (com Firestore) ==========
+// Usar variáveis de ambiente ou ficheiro local
+let serviceAccount;
+const localPath = path.join(__dirname, 'firebase-adminsdk.json');
+if (fs.existsSync(localPath)) {
+    serviceAccount = require(localPath);
+    console.log('✅ Credenciais carregadas do ficheiro local.');
+} else {
+    serviceAccount = {
+        type: 'service_account',
+        project_id: process.env.FIREBASE_PROJECT_ID,
+        private_key: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+        client_email: process.env.FIREBASE_CLIENT_EMAIL,
+        token_uri: 'https://oauth2.googleapis.com/token',
+    };
+    console.log('✅ Credenciais carregadas das variáveis de ambiente.');
 }
 
-function writeMetadata(metadata) {
+admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+    storageBucket: BUCKET_NAME
+});
+const db = admin.firestore();
+
+// ========== METADADOS NO FIRESTORE ==========
+async function saveFileMetadata(uid, encryptedName, metadata) {
     try {
-        fs.writeFileSync(METADATA_FILE, JSON.stringify(metadata, null, 2));
-    } catch (e) {
-        console.error('Erro ao escrever metadados:', e.message);
+        await db.collection('users').doc(uid).collection('files').doc(encryptedName).set(metadata);
+        console.log('✅ Metadados guardados no Firestore para:', encryptedName);
+    } catch (error) {
+        console.error('❌ Erro ao guardar metadados no Firestore:', error.message);
+    }
+}
+
+async function getUserFilesMetadata(uid) {
+    try {
+        const snapshot = await db.collection('users').doc(uid).collection('files').get();
+        const metadata = {};
+        snapshot.forEach(doc => {
+            metadata[doc.id] = doc.data();
+        });
+        return metadata;
+    } catch (error) {
+        console.error('❌ Erro ao ler metadados do Firestore:', error.message);
+        return {};
+    }
+}
+
+async function deleteFileMetadata(uid, encryptedName) {
+    try {
+        await db.collection('users').doc(uid).collection('files').doc(encryptedName).delete();
+        console.log('🗑️ Metadados eliminados do Firestore:', encryptedName);
+    } catch (error) {
+        console.error('❌ Erro ao eliminar metadados do Firestore:', error.message);
     }
 }
 
@@ -60,43 +97,22 @@ function generateJWT(payload, privateKey) {
 // ========== FUNÇÃO PARA OBTER TOKEN OAuth2 ==========
 function getAccessToken() {
     return new Promise((resolve, reject) => {
-        // Usar variáveis de ambiente ou ficheiro local
-        let serviceAccount;
-        const localPath = path.join(__dirname, 'firebase-adminsdk.json');
-        if (fs.existsSync(localPath)) {
-            try {
-                serviceAccount = require(localPath);
-                console.log('✅ Credenciais carregadas do ficheiro local.');
-            } catch (err) {
-                reject(new Error('Erro ao ler ficheiro de credenciais: ' + err.message));
-                return;
-            }
-        } else {
-            // Em produção (Render), usar variáveis de ambiente
-            if (!process.env.FIREBASE_PROJECT_ID || !process.env.FIREBASE_PRIVATE_KEY || !process.env.FIREBASE_CLIENT_EMAIL) {
-                reject(new Error('Variáveis de ambiente do Firebase não definidas.'));
-                return;
-            }
-            serviceAccount = {
-                type: 'service_account',
-                project_id: process.env.FIREBASE_PROJECT_ID,
-                private_key: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
-                client_email: process.env.FIREBASE_CLIENT_EMAIL,
-                token_uri: 'https://oauth2.googleapis.com/token',
-            };
-            console.log('✅ Credenciais carregadas das variáveis de ambiente.');
+        let sa = serviceAccount;
+        if (!sa) {
+            reject(new Error('Credenciais não carregadas.'));
+            return;
         }
 
         const now = Math.floor(Date.now() / 1000);
         const payload = {
-            iss: serviceAccount.client_email,
+            iss: sa.client_email,
             scope: 'https://www.googleapis.com/auth/devstorage.read_write',
             aud: 'https://oauth2.googleapis.com/token',
             exp: now + 3600,
             iat: now
         };
 
-        const token = generateJWT(payload, serviceAccount.private_key);
+        const token = generateJWT(payload, sa.private_key);
 
         const postData = `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${token}`;
         const options = {
@@ -147,7 +163,7 @@ function generateEncryptedName(originalName, uid) {
     return `${hash}-${timestamp}${extension}`;
 }
 
-// ========== FUNÇÃO PARA FAZER UPLOAD (COM PASTA) ==========
+// ========== FUNÇÃO PARA FAZER UPLOAD (COM PASTA E FIRESTORE) ==========
 async function uploadToFirebase(fileBuffer, originalName, mimetype, uid, folder = '') {
     const token = await getAccessToken();
 
@@ -193,18 +209,14 @@ async function uploadToFirebase(fileBuffer, originalName, mimetype, uid, folder 
         req.end();
     });
 
-    // Guardar metadados
-    const metadata = readMetadata();
-    if (!metadata[uid]) metadata[uid] = {};
-    metadata[uid][encryptedName] = {
+    // Guardar metadados no Firestore
+    await saveFileMetadata(uid, encryptedName, {
         originalName: originalName,
         uploadedAt: new Date().toISOString(),
         size: fileBuffer.length,
         encryptedName: encryptedName,
-        folder: folder || '' // guardar a pasta para referência
-    };
-    writeMetadata(metadata);
-    console.log('📝 Metadados guardados para o ficheiro:', originalName);
+        folder: folder || ''
+    });
 
     const publicUrl = `https://storage.googleapis.com/${BUCKET_NAME}/${newFileName}`;
     return {
@@ -218,68 +230,72 @@ async function uploadToFirebase(fileBuffer, originalName, mimetype, uid, folder 
     };
 }
 
-// ========== FUNÇÃO PARA LISTAR FICHEIROS (COM METADADOS) ==========
+// ========== FUNÇÃO PARA LISTAR FICHEIROS (COM FIRESTORE) ==========
 async function listUserFiles(uid, token) {
     const prefix = `users/${uid}/`;
     const url = `https://storage.googleapis.com/storage/v1/b/${BUCKET_NAME}/o?prefix=${encodeURIComponent(prefix)}`;
 
     console.log(`📄 A listar ficheiros para o utilizador: ${uid}`);
 
-    return new Promise((resolve, reject) => {
-        const options = {
-            method: 'GET',
-            headers: { 'Authorization': `Bearer ${token}` }
-        };
+    return new Promise(async (resolve, reject) => {
+        try {
+            const options = {
+                method: 'GET',
+                headers: { 'Authorization': `Bearer ${token}` }
+            };
 
-        const req = https.request(url, options, (res) => {
-            let data = '';
-            res.on('data', (chunk) => { data += chunk; });
-            res.on('end', () => {
-                try {
-                    console.log(`📥 Resposta do Storage (status ${res.statusCode})`);
-                    if (res.statusCode === 404) {
-                        resolve([]);
-                        return;
+            const req = https.request(url, options, (res) => {
+                let data = '';
+                res.on('data', (chunk) => { data += chunk; });
+                res.on('end', async () => {
+                    try {
+                        console.log(`📥 Resposta do Storage (status ${res.statusCode})`);
+                        if (res.statusCode === 404) {
+                            resolve([]);
+                            return;
+                        }
+                        const response = JSON.parse(data);
+                        console.log(`📦 Itens encontrados: ${response.items ? response.items.length : 0}`);
+
+                        if (!response.items) {
+                            resolve([]);
+                            return;
+                        }
+
+                        // Buscar metadados do Firestore
+                        const userMetadata = await getUserFilesMetadata(uid);
+
+                        const files = response.items.map(item => {
+                            const fullPath = item.name;
+                            const encryptedName = fullPath.split('/').pop();
+                            const meta = userMetadata[encryptedName] || {};
+
+                            return {
+                                fileName: fullPath,
+                                encryptedName: encryptedName,
+                                originalName: meta.originalName || encryptedName,
+                                size: parseInt(item.size || 0),
+                                url: `https://storage.googleapis.com/${BUCKET_NAME}/${fullPath}`,
+                                uploadedAt: meta.uploadedAt || new Date().toISOString(),
+                                folder: meta.folder || ''
+                            };
+                        });
+
+                        resolve(files);
+                    } catch (error) {
+                        console.error('❌ Erro ao processar resposta:', error.message);
+                        reject(new Error('Erro ao processar resposta: ' + error.message));
                     }
-                    const response = JSON.parse(data);
-                    console.log(`📦 Itens encontrados: ${response.items ? response.items.length : 0}`);
-
-                    if (!response.items) {
-                        resolve([]);
-                        return;
-                    }
-
-                    const metadata = readMetadata();
-                    const userMetadata = metadata[uid] || {};
-
-                    const files = response.items.map(item => {
-                        const fullPath = item.name;
-                        const encryptedName = fullPath.split('/').pop();
-                        const meta = userMetadata[encryptedName] || {};
-
-                        return {
-                            fileName: fullPath,
-                            encryptedName: encryptedName,
-                            originalName: meta.originalName || encryptedName,
-                            size: parseInt(item.size || 0),
-                            url: `https://storage.googleapis.com/${BUCKET_NAME}/${fullPath}`,
-                            uploadedAt: meta.uploadedAt || new Date().toISOString(),
-                            folder: meta.folder || ''
-                        };
-                    });
-
-                    resolve(files);
-                } catch (error) {
-                    console.error('❌ Erro ao processar resposta:', error.message);
-                    reject(new Error('Erro ao processar resposta: ' + error.message));
-                }
+                });
             });
-        });
-        req.on('error', (error) => {
-            console.error('❌ Erro na requisição:', error.message);
-            reject(new Error('Erro na requisição: ' + error.message));
-        });
-        req.end();
+            req.on('error', (error) => {
+                console.error('❌ Erro na requisição:', error.message);
+                reject(new Error('Erro na requisição: ' + error.message));
+            });
+            req.end();
+        } catch (error) {
+            reject(error);
+        }
     });
 }
 
@@ -314,15 +330,7 @@ async function deleteFile(fileName, uid, token) {
     });
 
     const encryptedName = fileName.split('/').pop();
-    const metadata = readMetadata();
-    if (metadata[uid] && metadata[uid][encryptedName]) {
-        delete metadata[uid][encryptedName];
-        if (Object.keys(metadata[uid]).length === 0) {
-            delete metadata[uid];
-        }
-        writeMetadata(metadata);
-        console.log('🗑️ Metadados eliminados para:', encryptedName);
-    }
+    await deleteFileMetadata(uid, encryptedName);
 }
 
 // ========== PARSE MULTIPART ==========
@@ -426,7 +434,7 @@ const server = http.createServer(async (req, res) => {
                 console.log(`📄 Ficheiro original: ${filePart.filename}`);
                 console.log(`📏 Tamanho: ${filePart.data.length} bytes`);
                 console.log(`👤 Utilizador: ${uid}`);
-                console.log(`📁 Pasta: ${folder || '(raiz)'}`);
+                console.log(`📁 Pasta de destino: ${folder || '(raiz)'}`);
 
                 const result = await uploadToFirebase(
                     filePart.data,

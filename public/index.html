@@ -228,7 +228,7 @@
     .upload-area .sub-text { font-size: 0.8rem; color: #999; margin-top: 0.5rem; }
     input[type="file"] { display: none; }
 
-    /* ===== CONTROLS (pesquisa e pastas) ===== */
+    /* ===== CONTROLS (pesquisa, pastas, destino) ===== */
     .file-controls {
       display: flex;
       gap: 0.75rem;
@@ -260,6 +260,29 @@
     .file-controls select:focus {
       outline: none;
       border-color: #667eea;
+    }
+
+    /* ===== DESTINO DA PASTA (upload) ===== */
+    .dest-folder-selector {
+      display: flex;
+      gap: 0.75rem;
+      align-items: center;
+      margin: 0.5rem 0;
+      flex-wrap: wrap;
+    }
+    .dest-folder-selector label {
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+    .dest-folder-selector select {
+      flex: 1;
+      padding: 0.5rem;
+      border: 1px solid #ddd;
+      border-radius: 0.5rem;
+      font-size: 0.9rem;
+      background: white;
+      cursor: pointer;
+      min-width: 120px;
     }
 
     /* ===== PROGRESS ===== */
@@ -390,6 +413,7 @@
       .file-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 0.75rem; }
       .file-controls { flex-direction: column; }
       .file-controls input[type="text"] { width: 100%; }
+      .dest-folder-selector { flex-direction: column; align-items: stretch; }
     }
     .text-center { text-align: center; }
     .mt-1 { margin-top: 0.75rem; }
@@ -450,6 +474,14 @@
       <input type="file" id="fileInput" multiple />
     </div>
 
+    <!-- Seletor de pasta de destino -->
+    <div class="dest-folder-selector">
+      <label for="destFolderSelect">📂 Enviar para:</label>
+      <select id="destFolderSelect">
+        <option value="">Raiz</option>
+      </select>
+    </div>
+
     <button class="btn btn-success" id="uploadBtn" disabled>
       🚀 Enviar Ficheiros
     </button>
@@ -457,7 +489,7 @@
     <div id="progress"><div id="progressBar">0%</div></div>
     <div id="status"></div>
 
-    <!-- Controls: Pesquisa e Pastas -->
+    <!-- Controls: Pesquisa e Pastas (filtro) -->
     <div class="file-controls">
       <input type="text" id="searchInput" placeholder="🔍 Pesquisar ficheiros..." />
       <select id="folderSelect">
@@ -485,9 +517,10 @@
 <!-- ============================================================ -->
 <script>
   // ================================================================
-  // 0. URL DO BACKEND (substituir pela URL do Render)
+  // 0. URL DO BACKEND (substituir se necessário)
   // ================================================================
-  const API_BASE = 'https://projeto-shares.onrender.com'; 
+  const API_BASE = 'https://projeto-shares.onrender.com'; // ✅ URL correta do backend
+
   // ================================================================
   // 1. CONFIGURAÇÃO DO FIREBASE
   // ================================================================
@@ -534,6 +567,7 @@
   const searchInput = document.getElementById('searchInput');
   const folderSelect = document.getElementById('folderSelect');
   const newFolderBtn = document.getElementById('newFolderBtn');
+  const destFolderSelect = document.getElementById('destFolderSelect');
 
   // ================================================================
   // 3. VARIÁVEIS DE ESTADO
@@ -542,7 +576,7 @@
   let selectedFiles = [];
   let currentUser = null;
   let allFiles = [];           // todos os ficheiros do utilizador
-  let currentFolder = '';      // pasta selecionada ('' = todas, 'raiz' = raiz)
+  let currentFolder = '';      // pasta selecionada para filtro ('' = todas, 'raiz' = raiz)
   let searchTerm = '';
 
   // ================================================================
@@ -719,7 +753,7 @@
   });
 
   // ================================================================
-  // 10. UPLOAD MÚLTIPLO
+  // 10. UPLOAD MÚLTIPLO (com destino de pasta)
   // ================================================================
   uploadArea.addEventListener('click', () => fileInput.click());
 
@@ -761,15 +795,16 @@
       return;
     }
 
+    const destFolder = destFolderSelect.value;
+
     uploadBtn.disabled = true;
     progressDiv.style.display = 'block';
     progressBar.style.width = '0%';
     progressBar.textContent = '0%';
-    showStatus(`⏳ A enviar ${selectedFiles.length} ficheiros...`, 'info');
+    showStatus(`⏳ A enviar ${selectedFiles.length} ficheiros${destFolder ? ' para "' + destFolder + '"' : ' para a Raiz'}...`, 'info');
 
-    let completed = 0;
-    const totalSize = selectedFiles.reduce((acc, f) => acc + f.size, 0);
     let uploadedSize = 0;
+    const totalSize = selectedFiles.reduce((acc, f) => acc + f.size, 0);
     const results = [];
 
     try {
@@ -777,9 +812,8 @@
         const formData = new FormData();
         formData.append('file', file);
         formData.append('uid', currentUser.uid);
-        // Envia a pasta atual (se houver)
-        if (currentFolder && currentFolder !== 'raiz') {
-          formData.append('folder', currentFolder);
+        if (destFolder) {
+          formData.append('folder', destFolder);
         }
 
         await new Promise((resolve, reject) => {
@@ -849,7 +883,7 @@
       allFiles = data.files || [];
       // Remover ficheiros .keep (usados para criar pastas)
       allFiles = allFiles.filter(f => !f.originalName.startsWith('.keep'));
-      updateFolderSelect(allFiles);
+      updateFolderSelectors(allFiles);
       renderFilteredFiles();
     } catch (error) {
       console.error('❌ Erro ao carregar ficheiros:', error);
@@ -946,9 +980,9 @@
   }
 
   // ================================================================
-  // 14. ATUALIZAR SELETOR DE PASTAS
+  // 14. ATUALIZAR SELETORES DE PASTAS (filtro e destino)
   // ================================================================
-  function updateFolderSelect(files) {
+  function updateFolderSelectors(files) {
     const folders = new Set();
     files.forEach(f => {
       const parts = f.fileName.split('/');
@@ -956,15 +990,28 @@
         folders.add(parts[2]);
       }
     });
-    // Limpar opções (manter as primeiras: "Todas" e "Raiz")
+    const folderList = Array.from(folders);
+
+    // Atualizar seletor de filtro (folderSelect)
     while (folderSelect.options.length > 2) {
       folderSelect.remove(2);
     }
-    folders.forEach(f => {
+    folderList.forEach(f => {
       const opt = document.createElement('option');
       opt.value = f;
       opt.textContent = `📁 ${f}`;
       folderSelect.appendChild(opt);
+    });
+
+    // Atualizar seletor de destino (destFolderSelect)
+    while (destFolderSelect.options.length > 1) {
+      destFolderSelect.remove(1);
+    }
+    folderList.forEach(f => {
+      const opt = document.createElement('option');
+      opt.value = f;
+      opt.textContent = f;
+      destFolderSelect.appendChild(opt);
     });
   }
 
@@ -988,7 +1035,6 @@
     const name = prompt('Nome da nova pasta:');
     if (name && name.trim()) {
       const folderName = name.trim();
-      // Criar um ficheiro .keep vazio dentro da pasta
       const blob = new Blob([''], { type: 'text/plain' });
       const file = new File([blob], '.keep', { type: 'text/plain' });
       const formData = new FormData();
