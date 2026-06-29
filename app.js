@@ -534,14 +534,15 @@ const server = http.createServer(async (req, res) => {
         return;
     }
 
-    // ===== MOVER FICHEIRO =====
-    // ===== MOVER FICHEIRO =====
+   // ===== MOVER FICHEIRO =====
 if (req.method === 'POST' && req.url === '/api/move') {
     let body = '';
     req.on('data', (chunk) => { body += chunk; });
     req.on('end', async () => {
         try {
             const { fileName, destFolder, uid } = JSON.parse(body);
+
+            console.log(`📥 Pedido de movimento: fileName=${fileName}, destFolder="${destFolder}", uid=${uid}`);
 
             if (!fileName || !uid) {
                 res.writeHead(400, { 'Content-Type': 'application/json' });
@@ -559,7 +560,11 @@ if (req.method === 'POST' && req.url === '/api/move') {
             const encryptedName = pathParts.pop();
             const currentFolder = pathParts.length > 3 ? pathParts[2] : '';
 
+            console.log(`📂 Pasta atual: "${currentFolder}", pasta destino: "${destFolder || '(raiz)'}"`);
+
+            // Se a pasta de destino é igual à atual, não fazer nada
             if (destFolder === currentFolder) {
+                console.log('ℹ️ Ficheiro já está na pasta pretendida.');
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({ message: 'Ficheiro já está na pasta pretendida.' }));
                 return;
@@ -567,13 +572,16 @@ if (req.method === 'POST' && req.url === '/api/move') {
 
             const token = await getAccessToken();
 
+            // Construir o novo caminho
             const destFolderPath = destFolder ? `${destFolder}/` : '';
             const newFileName = `users/${uid}/${destFolderPath}${encryptedName}`;
+
+            console.log(`📄 Novo caminho: ${newFileName}`);
 
             // ===== COPIAR COM ACL PÚBLICA DIRETAMENTE =====
             const copyUrl = `https://storage.googleapis.com/storage/v1/b/${BUCKET_NAME}/o/${encodeURIComponent(fileName)}/copyTo/b/${BUCKET_NAME}/o/${encodeURIComponent(newFileName)}?destinationPredefinedAcl=publicRead`;
 
-            console.log(`⏳ A copiar de ${fileName} para ${newFileName} com ACL pública...`);
+            console.log(`⏳ A copiar de ${fileName} para ${newFileName}...`);
             await new Promise((resolve, reject) => {
                 const options = {
                     method: 'POST',
@@ -589,9 +597,10 @@ if (req.method === 'POST' && req.url === '/api/move') {
                         try {
                             const response = JSON.parse(data);
                             if (response.name) {
-                                console.log('✅ Ficheiro copiado com ACL pública para:', newFileName);
+                                console.log('✅ Ficheiro copiado com sucesso para:', newFileName);
                                 resolve();
                             } else {
+                                console.error('❌ Resposta de cópia sem nome:', response);
                                 reject(new Error('Erro ao copiar: ' + JSON.stringify(response)));
                             }
                         } catch (error) {
