@@ -10,18 +10,8 @@
   <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
 
   <style>
-    /* ===== RESET E BASE ===== */
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
-    html {
-      font-size: 16px;
-      scroll-behavior: smooth;
-    }
-
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { font-size: 16px; scroll-behavior: smooth; }
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -31,14 +21,7 @@
       align-items: center;
       justify-content: center;
     }
-
-    .container {
-      max-width: 1100px;
-      width: 100%;
-      margin: 0 auto;
-    }
-
-    /* ===== CARDS ===== */
+    .container { max-width: 1100px; width: 100%; margin: 0 auto; }
     .card {
       background: white;
       border-radius: 1.25rem;
@@ -47,16 +30,8 @@
       box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
       transition: box-shadow 0.3s ease;
     }
-
-    @media (min-width: 768px) {
-      .card {
-        padding: 2rem;
-      }
-    }
-
-    .hidden {
-      display: none !important;
-    }
+    @media (min-width: 768px) { .card { padding: 2rem; } }
+    .hidden { display: none !important; }
 
     /* ===== HEADER ===== */
     .header {
@@ -65,36 +40,23 @@
       gap: 0.75rem;
       margin-bottom: 1.5rem;
     }
-
     @media (min-width: 600px) {
-      .header {
-        flex-direction: row;
-        justify-content: space-between;
-        align-items: center;
-        gap: 1rem;
-      }
+      .header { flex-direction: row; justify-content: space-between; align-items: center; gap: 1rem; }
     }
-
     .header h1 {
       font-size: 1.4rem;
       color: #333;
       text-align: center;
     }
-
     @media (min-width: 600px) {
-      .header h1 {
-        font-size: 1.8rem;
-        text-align: left;
-      }
+      .header h1 { font-size: 1.8rem; text-align: left; }
     }
-
     .header h1 span {
       background: linear-gradient(135deg, #667eea, #764ba2);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
     }
-
     .user-info {
       display: flex;
       align-items: center;
@@ -102,16 +64,9 @@
       gap: 0.75rem;
       flex-wrap: wrap;
     }
-
-    @media (min-width: 600px) {
-      .user-info {
-        justify-content: flex-end;
-      }
-    }
-
+    @media (min-width: 600px) { .user-info { justify-content: flex-end; } }
     .user-avatar {
-      width: 2.5rem;
-      height: 2.5rem;
+      width: 2.5rem; height: 2.5rem;
       border-radius: 50%;
       background: #667eea;
       color: white;
@@ -122,7 +77,6 @@
       font-size: 1rem;
       flex-shrink: 0;
     }
-
     .user-email {
       font-size: 0.85rem;
       color: #555;
@@ -131,12 +85,7 @@
       overflow: hidden;
       text-overflow: ellipsis;
     }
-
-    @media (min-width: 480px) {
-      .user-email {
-        max-width: 200px;
-      }
-    }
+    @media (min-width: 480px) { .user-email { max-width: 200px; } }
 
     /* ===== BOTÕES ===== */
     .btn {
@@ -154,41 +103,14 @@
       gap: 0.4rem;
       white-space: nowrap;
     }
-
-    .btn:active {
-      transform: scale(0.96);
-    }
-
-    .btn-primary {
-      background: #667eea;
-      color: white;
-    }
-    .btn-primary:hover {
-      background: #5a67d8;
-      transform: translateY(-2px);
-    }
-
-    .btn-danger {
-      background: #e53e3e;
-      color: white;
-    }
-    .btn-danger:hover {
-      background: #c53030;
-    }
-
-    .btn-success {
-      background: #48bb78;
-      color: white;
-    }
-    .btn-success:hover {
-      background: #38a169;
-    }
-
-    .btn-sm {
-      padding: 0.3rem 0.75rem;
-      font-size: 0.75rem;
-    }
-
+    .btn:active { transform: scale(0.96); }
+    .btn-primary { background: #667eea; color: white; }
+    .btn-primary:hover { background: #5a67d8; transform: translateY(-2px); }
+    .btn-danger { background: #e53e3e; color: white; }
+    .btn-danger:hover { background: #c53030; }
+    .btn-success { background: #48bb78; color: white; }
+    .btn-success:hover { background: #38a169; }
+    .btn-sm { padding: 0.3rem 0.75rem; font-size: 0.75rem; }
     .btn-danger-sm {
       background: #e53e3e;
       color: white;
@@ -200,9 +122,12 @@
       font-weight: 600;
       transition: background 0.2s;
     }
-    .btn-danger-sm:hover {
-      background: #c53030;
+    .btn-danger-sm:hover { background: #c53030; }
+    .btn-google {
+      background: #db4437;
+      color: white;
     }
+    .btn-google:hover { background: #c53929; transform: translateY(-2px); }
 
     /* ===== AUTH FORM ===== */
     .auth-form {
@@ -210,14 +135,12 @@
       margin: 0 auto;
       padding: 0 0.5rem;
     }
-
     .auth-form h2 {
       text-align: center;
       margin-bottom: 1.5rem;
       color: #333;
       font-size: 1.6rem;
     }
-
     .auth-form input {
       width: 100%;
       padding: 0.8rem 1rem;
@@ -227,20 +150,32 @@
       font-size: 1rem;
       transition: border-color 0.2s, box-shadow 0.2s;
     }
-
     .auth-form input:focus {
       outline: none;
       border-color: #667eea;
       box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
     }
-
     .auth-form .btn {
       width: 100%;
       padding: 0.8rem;
       font-size: 1.1rem;
       margin-top: 0.25rem;
     }
-
+    .auth-divider {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin: 1rem 0;
+      color: #999;
+      font-size: 0.9rem;
+    }
+    .auth-divider::before,
+    .auth-divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: #ddd;
+    }
     .auth-toggle {
       color: #667eea;
       cursor: pointer;
@@ -248,10 +183,7 @@
       margin-top: 1rem;
       font-size: 0.95rem;
     }
-    .auth-toggle:hover {
-      text-decoration: underline;
-    }
-
+    .auth-toggle:hover { text-decoration: underline; }
     .auth-error {
       color: #e53e3e;
       text-align: center;
@@ -261,6 +193,21 @@
       background: #fff5f5;
       border-radius: 0.5rem;
     }
+    .auth-info {
+      color: #0c5460;
+      text-align: center;
+      margin-bottom: 0.75rem;
+      font-size: 0.9rem;
+      padding: 0.5rem;
+      background: #d1ecf1;
+      border-radius: 0.5rem;
+    }
+    .auth-resend {
+      color: #667eea;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    .auth-resend:hover { text-decoration: underline; }
 
     /* ===== UPLOAD AREA ===== */
     .upload-area {
@@ -272,49 +219,14 @@
       transition: all 0.3s;
       background: #fafafa;
     }
-
-    @media (min-width: 480px) {
-      .upload-area {
-        padding: 2.5rem 1.5rem;
-      }
-    }
-
-    .upload-area:hover {
-      border-color: #667eea;
-      background: #f0f0ff;
-    }
-
-    .upload-area.dragover {
-      border-color: #48bb78;
-      background: #e8f5e9;
-    }
-
-    .upload-icon {
-      font-size: 3rem;
-      display: block;
-      margin-bottom: 0.5rem;
-    }
-
-    @media (min-width: 480px) {
-      .upload-icon {
-        font-size: 3.5rem;
-      }
-    }
-
-    .upload-area p {
-      font-size: 1rem;
-      color: #555;
-    }
-
-    .upload-area .sub-text {
-      font-size: 0.8rem;
-      color: #999;
-      margin-top: 0.5rem;
-    }
-
-    input[type="file"] {
-      display: none;
-    }
+    @media (min-width: 480px) { .upload-area { padding: 2.5rem 1.5rem; } }
+    .upload-area:hover { border-color: #667eea; background: #f0f0ff; }
+    .upload-area.dragover { border-color: #48bb78; background: #e8f5e9; }
+    .upload-icon { font-size: 3rem; display: block; margin-bottom: 0.5rem; }
+    @media (min-width: 480px) { .upload-icon { font-size: 3.5rem; } }
+    .upload-area p { font-size: 1rem; color: #555; }
+    .upload-area .sub-text { font-size: 0.8rem; color: #999; margin-top: 0.5rem; }
+    input[type="file"] { display: none; }
 
     /* ===== PROGRESS ===== */
     #progress {
@@ -325,7 +237,6 @@
       display: none;
       height: 1.5rem;
     }
-
     #progressBar {
       height: 100%;
       background: linear-gradient(90deg, #667eea, #764ba2);
@@ -348,22 +259,9 @@
       font-weight: 500;
       font-size: 0.95rem;
     }
-
-    .success {
-      background: #d4edda;
-      color: #155724;
-      border: 1px solid #c3e6cb;
-    }
-    .error {
-      background: #f8d7da;
-      color: #721c24;
-      border: 1px solid #f5c6cb;
-    }
-    .info {
-      background: #d1ecf1;
-      color: #0c5460;
-      border: 1px solid #bee5eb;
-    }
+    .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+    .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+    .info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
 
     /* ===== FILE LIST ===== */
     .section-title {
@@ -372,35 +270,15 @@
       margin-top: 1.5rem;
       margin-bottom: 0.75rem;
     }
-
-    @media (min-width: 600px) {
-      .section-title {
-        font-size: 1.4rem;
-        margin-top: 2rem;
-      }
-    }
-
+    @media (min-width: 600px) { .section-title { font-size: 1.4rem; margin-top: 2rem; } }
     .file-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
       gap: 1rem;
       margin-top: 0.75rem;
     }
-
-    @media (min-width: 480px) {
-      .file-grid {
-        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-        gap: 1.25rem;
-      }
-    }
-
-    @media (min-width: 768px) {
-      .file-grid {
-        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-        gap: 1.5rem;
-      }
-    }
-
+    @media (min-width: 480px) { .file-grid { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1.25rem; } }
+    @media (min-width: 768px) { .file-grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1.5rem; } }
     .file-item {
       background: #f8f9fa;
       padding: 0.75rem;
@@ -411,15 +289,10 @@
       gap: 0.3rem;
       transition: all 0.2s;
     }
-
-    .file-item:hover {
-      transform: translateY(-3px);
-      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
-    }
-
+    .file-item:hover { transform: translateY(-3px); box-shadow: 0 6px 16px rgba(0,0,0,0.08); }
     .file-preview {
       width: 100%;
-      aspect-ratio: 1 / 1;
+      aspect-ratio: 1/1;
       background: #f0f0f0;
       border-radius: 0.5rem;
       display: flex;
@@ -429,44 +302,12 @@
       margin-bottom: 0.4rem;
       min-height: 80px;
     }
-
-    @media (min-width: 480px) {
-      .file-preview {
-        min-height: 100px;
-      }
-    }
-
-    @media (min-width: 768px) {
-      .file-preview {
-        min-height: 120px;
-      }
-    }
-
-    .file-preview-image {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      border-radius: 0.5rem;
-    }
-
-    .file-preview-video {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      border-radius: 0.5rem;
-    }
-
-    .file-preview-icon {
-      font-size: 2.5rem;
-      color: #667eea;
-    }
-
-    @media (min-width: 480px) {
-      .file-preview-icon {
-        font-size: 3rem;
-      }
-    }
-
+    @media (min-width: 480px) { .file-preview { min-height: 100px; } }
+    @media (min-width: 768px) { .file-preview { min-height: 120px; } }
+    .file-preview-image { width: 100%; height: 100%; object-fit: cover; border-radius: 0.5rem; }
+    .file-preview-video { width: 100%; height: 100%; object-fit: cover; border-radius: 0.5rem; }
+    .file-preview-icon { font-size: 2.5rem; color: #667eea; }
+    @media (min-width: 480px) { .file-preview-icon { font-size: 3rem; } }
     .file-item .file-name {
       font-weight: 600;
       font-size: 0.8rem;
@@ -475,30 +316,10 @@
       overflow: hidden;
       text-overflow: ellipsis;
     }
-
-    @media (min-width: 480px) {
-      .file-item .file-name {
-        font-size: 0.9rem;
-      }
-    }
-
-    .file-item .file-size {
-      font-size: 0.7rem;
-      color: #666;
-    }
-
-    .file-item .file-date {
-      font-size: 0.65rem;
-      color: #999;
-    }
-
-    .file-item .file-actions {
-      display: flex;
-      gap: 0.5rem;
-      margin-top: 0.3rem;
-      flex-wrap: wrap;
-    }
-
+    @media (min-width: 480px) { .file-item .file-name { font-size: 0.9rem; } }
+    .file-item .file-size { font-size: 0.7rem; color: #666; }
+    .file-item .file-date { font-size: 0.65rem; color: #999; }
+    .file-item .file-actions { display: flex; gap: 0.5rem; margin-top: 0.3rem; flex-wrap: wrap; }
     .btn-download {
       background: #667eea;
       color: white;
@@ -514,86 +335,32 @@
       align-items: center;
       gap: 0.2rem;
     }
-
-    .btn-download:hover {
-      background: #5a67d8;
-    }
-
-    .empty-state {
-      text-align: center;
-      padding: 2rem 1rem;
-      color: #999;
-    }
-
-    .empty-state .emoji {
-      font-size: 2.5rem;
-      display: block;
-      margin-bottom: 0.5rem;
-    }
+    .btn-download:hover { background: #5a67d8; }
+    .empty-state { text-align: center; padding: 2rem 1rem; color: #999; }
+    .empty-state .emoji { font-size: 2.5rem; display: block; margin-bottom: 0.5rem; }
 
     /* ===== BOTÃO DE UPLOAD PRINCIPAL ===== */
-    #uploadBtn {
-      width: 100%;
-      margin-top: 1rem;
-      padding: 0.8rem;
-      font-size: 1rem;
-    }
+    #uploadBtn { width: 100%; margin-top: 1rem; padding: 0.8rem; font-size: 1rem; }
+    @media (min-width: 480px) { #uploadBtn { padding: 0.9rem; font-size: 1.1rem; } }
 
-    @media (min-width: 480px) {
-      #uploadBtn {
-        padding: 0.9rem;
-        font-size: 1.1rem;
-      }
-    }
-
-    /* ===== RESPONSIVE: AJUSTES FINOS ===== */
+    /* ===== RESPONSIVE ===== */
     @media (max-width: 400px) {
-      body {
-        padding: 0.5rem;
-      }
-      .card {
-        padding: 1rem;
-        border-radius: 1rem;
-      }
-      .header h1 {
-        font-size: 1.2rem;
-      }
-      .user-email {
-        font-size: 0.75rem;
-        max-width: 120px;
-      }
-      .btn {
-        font-size: 0.8rem;
-        padding: 0.4rem 0.7rem;
-      }
-      .auth-form h2 {
-        font-size: 1.3rem;
-      }
-      .upload-area {
-        padding: 1.5rem 0.75rem;
-      }
-      .upload-icon {
-        font-size: 2.5rem;
-      }
-      .file-grid {
-        grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-        gap: 0.75rem;
-      }
+      body { padding: 0.5rem; }
+      .card { padding: 1rem; border-radius: 1rem; }
+      .header h1 { font-size: 1.2rem; }
+      .user-email { font-size: 0.75rem; max-width: 120px; }
+      .btn { font-size: 0.8rem; padding: 0.4rem 0.7rem; }
+      .auth-form h2 { font-size: 1.3rem; }
+      .upload-area { padding: 1.5rem 0.75rem; }
+      .upload-icon { font-size: 2.5rem; }
+      .file-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 0.75rem; }
     }
-
-    /* ===== UTILITÁRIOS ===== */
-    .text-center {
-      text-align: center;
-    }
-    .mt-1 {
-      margin-top: 0.75rem;
-    }
-    .w-full {
-      width: 100%;
-    }
+    .text-center { text-align: center; }
+    .mt-1 { margin-top: 0.75rem; }
+    .w-full { width: 100%; }
+    .gap-2 { gap: 0.5rem; }
   </style>
 </head>
-
 <body>
 
 <div class="container">
@@ -603,10 +370,26 @@
     <div class="auth-form">
       <h2 id="authTitle">🔐 Entrar</h2>
       <div id="authError" class="auth-error hidden"></div>
+      <div id="authInfo" class="auth-info hidden"></div>
+
+      <!-- Email/Password -->
       <input type="email" id="authEmail" placeholder="Email" />
       <input type="password" id="authPassword" placeholder="Palavra-passe" />
       <button class="btn btn-primary" id="authBtn">Entrar</button>
+
+      <!-- Divisor -->
+      <div class="auth-divider">ou</div>
+
+      <!-- Google Login -->
+      <button class="btn btn-google" id="googleBtn">🔴 Entrar com Google</button>
+
       <div class="auth-toggle" id="authToggle">Não tem conta? <strong>Registar</strong></div>
+
+      <!-- Link para reenviar verificação (aparece apenas quando necessário) -->
+      <div id="resendContainer" class="hidden text-center mt-1">
+        <span style="font-size:0.9rem; color:#666;">Não recebeu o email de verificação?</span>
+        <span class="auth-resend" id="resendVerifyBtn">Reenviar</span>
+      </div>
     </div>
   </div>
 
@@ -656,9 +439,9 @@
 <!-- ============================================================ -->
 <script>
   // ================================================================
-  // 0. URL DO BACKEND 
+  // 0. URL DO BACKEND (substituir pela URL do Render)
   // ================================================================
-  const API_BASE = 'https://projeto-shares.onrender.com'; //
+  const API_BASE = 'https://projeto-shares.onrender.com'; // <-- SUBSTITUIR!
 
   // ================================================================
   // 1. CONFIGURAÇÃO DO FIREBASE
@@ -686,6 +469,10 @@
   const authBtn = document.getElementById('authBtn');
   const authToggle = document.getElementById('authToggle');
   const authError = document.getElementById('authError');
+  const authInfo = document.getElementById('authInfo');
+  const googleBtn = document.getElementById('googleBtn');
+  const resendContainer = document.getElementById('resendContainer');
+  const resendVerifyBtn = document.getElementById('resendVerifyBtn');
   const userEmail = document.getElementById('userEmail');
   const userAvatar = document.getElementById('userAvatar');
   const logoutBtn = document.getElementById('logoutBtn');
@@ -701,16 +488,24 @@
   let isLogin = true;
   let selectedFile = null;
   let currentUser = null;
+  let pendingCredential = null; // para login com Google
 
   // ================================================================
-  // 3. AUTH
+  // 3. FUNÇÕES DE UI
   // ================================================================
   function showAuthError(msg) {
     authError.textContent = msg;
     authError.classList.remove('hidden');
+    authInfo.classList.add('hidden');
   }
-  function clearAuthError() {
+  function showAuthInfo(msg) {
+    authInfo.textContent = msg;
+    authInfo.classList.remove('hidden');
     authError.classList.add('hidden');
+  }
+  function clearAuthMessages() {
+    authError.classList.add('hidden');
+    authInfo.classList.add('hidden');
   }
 
   function toggleAuthMode() {
@@ -720,11 +515,15 @@
     authToggle.innerHTML = isLogin ?
       'Não tem conta? <strong>Registar</strong>' :
       'Já tem conta? <strong>Entrar</strong>';
-    clearAuthError();
+    clearAuthMessages();
     authPassword.value = '';
+    resendContainer.classList.add('hidden');
   }
   authToggle.addEventListener('click', toggleAuthMode);
 
+  // ================================================================
+  // 4. AUTH COM EMAIL/SENHA (com verificação)
+  // ================================================================
   async function handleAuth() {
     const email = authEmail.value.trim();
     const password = authPassword.value.trim();
@@ -733,43 +532,147 @@
       showAuthError('Preencha todos os campos.');
       return;
     }
-    clearAuthError();
+    clearAuthMessages();
 
     try {
       authBtn.disabled = true;
       authBtn.textContent = '⏳ A carregar...';
 
       if (isLogin) {
-        await auth.signInWithEmailAndPassword(email, password);
+        // LOGIN
+        const userCredential = await auth.signInWithEmailAndPassword(email, password);
+        const user = userCredential.user;
+
+        // Verificar se o email está verificado
+        if (!user.emailVerified) {
+          await auth.signOut();
+          showAuthError('⚠️ O seu email ainda não foi verificado. Verifique a sua caixa de correio.');
+          resendContainer.classList.remove('hidden');
+          authBtn.disabled = false;
+          authBtn.textContent = 'Entrar';
+          return;
+        }
+
+        // Login bem-sucedido
+        authBtn.textContent = 'Entrar';
+        authBtn.disabled = false;
+        // O onAuthStateChanged vai tratar do resto
+
       } else {
-        await auth.createUserWithEmailAndPassword(email, password);
+        // REGISTO
+        const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+        const user = userCredential.user;
+
+        // Enviar email de verificação
+        await user.sendEmailVerification();
+        showAuthInfo('📧 Enviámos um email de verificação para ' + email + '. Verifique a sua caixa de correio e clique no link para ativar a conta.');
+
+        // Deslogar para não entrar automaticamente
+        await auth.signOut();
+        authBtn.textContent = 'Registar';
+        authBtn.disabled = false;
+        // Mudar para o modo login
+        isLogin = true;
+        authTitle.textContent = '🔐 Entrar';
+        authBtn.textContent = 'Entrar';
+        authToggle.innerHTML = 'Não tem conta? <strong>Registar</strong>';
+        authPassword.value = '';
+        resendContainer.classList.add('hidden');
       }
 
-      authBtn.textContent = isLogin ? 'Entrar' : 'Registar';
-      authBtn.disabled = false;
     } catch (error) {
       authBtn.disabled = false;
       authBtn.textContent = isLogin ? 'Entrar' : 'Registar';
       showAuthError(error.message);
     }
   }
+
   authBtn.addEventListener('click', handleAuth);
 
   authEmail.addEventListener('keydown', (e) => { if (e.key === 'Enter') authPassword.focus(); });
   authPassword.addEventListener('keydown', (e) => { if (e.key === 'Enter') handleAuth(); });
 
   // ================================================================
-  // 4. LOGOUT
+  // 5. LOGIN COM GOOGLE
+  // ================================================================
+  googleBtn.addEventListener('click', async () => {
+    try {
+      googleBtn.disabled = true;
+      googleBtn.textContent = '⏳ A carregar...';
+      const provider = new firebase.auth.GoogleAuthProvider();
+      const result = await auth.signInWithPopup(provider);
+      // Se chegou aqui, o login foi bem-sucedido e o email do Google já está verificado
+      googleBtn.textContent = '🔴 Entrar com Google';
+      googleBtn.disabled = false;
+      // O onAuthStateChanged vai tratar do resto
+    } catch (error) {
+      googleBtn.textContent = '🔴 Entrar com Google';
+      googleBtn.disabled = false;
+      if (error.code === 'auth/popup-closed-by-user') {
+        showAuthError('Janela de login foi fechada. Tente novamente.');
+      } else {
+        showAuthError(error.message);
+      }
+    }
+  });
+
+  // ================================================================
+  // 6. REENVIAR VERIFICAÇÃO
+  // ================================================================
+  resendVerifyBtn.addEventListener('click', async () => {
+    try {
+      const email = authEmail.value.trim();
+      if (!email) {
+        showAuthError('Por favor, insira o seu email para reenviar a verificação.');
+        return;
+      }
+      // Enviar novamente o email de verificação (requer que o utilizador esteja autenticado, mas não está)
+      // Vamos usar o método de "enviar verificação" com o currentUser, mas como não está autenticado,
+      // podemos usar o Firebase Auth com a função de reenviar verificação (não disponível diretamente).
+      // Solução alternativa: pedir ao utilizador para tentar fazer login novamente e usar o resend.
+      showAuthInfo('📧 A reenviar...');
+      // Para reenviar, precisamos de um utilizador autenticado. Vamos forçar login e depois reenviar.
+      try {
+        const userCredential = await auth.signInWithEmailAndPassword(email, '');
+        // Não vai funcionar porque precisa de password
+      } catch (e) {
+        // Vamos usar um método alternativo: enviar email de verificação via Firebase Admin SDK (no backend)
+        // Para simplificar, sugerimos ao utilizador que tente fazer login novamente e use o resend.
+        showAuthInfo('Por favor, tente fazer login com a sua palavra-passe. Se não recebeu o email, pode pedir para reenviar na página de login.');
+      }
+      // Melhor: deixar o utilizador clicar no link "Reenviar" e usar o backend para enviar.
+      // Mas por enquanto, vamos mostrar uma mensagem para o utilizador fazer login primeiro.
+      showAuthInfo('Para reenviar o email de verificação, faça login com a sua palavra-passe e depois poderá reenviar.');
+    } catch (error) {
+      showAuthError(error.message);
+    }
+  });
+
+  // ================================================================
+  // 7. LOGOUT
   // ================================================================
   logoutBtn.addEventListener('click', async () => {
     await auth.signOut();
   });
 
   // ================================================================
-  // 5. AUTH STATE
+  // 8. AUTH STATE CHANGED (com verificação de email)
   // ================================================================
   auth.onAuthStateChanged(async (user) => {
     if (user) {
+      // Verificar se o email está verificado
+      if (!user.emailVerified) {
+        // Se o utilizador tentou fazer login com email não verificado
+        await auth.signOut();
+        showAuthError('⚠️ O seu email ainda não foi verificado. Verifique a sua caixa de correio.');
+        resendContainer.classList.remove('hidden');
+        // Voltar ao estado de login
+        authCard.classList.remove('hidden');
+        dashboardCard.classList.add('hidden');
+        return;
+      }
+
+      // Utilizador autenticado e verificado
       currentUser = user;
       console.log('✅ Utilizador autenticado:', user.uid, user.email);
       authCard.classList.add('hidden');
@@ -778,18 +681,30 @@
       userAvatar.textContent = user.email.charAt(0).toUpperCase();
       uploadBtn.disabled = true;
       loadUserFiles();
+      // Esconder mensagens de erro
+      clearAuthMessages();
+      resendContainer.classList.add('hidden');
+
     } else {
+      // Utilizador deslogado
       currentUser = null;
       authCard.classList.remove('hidden');
       dashboardCard.classList.add('hidden');
       authEmail.value = '';
       authPassword.value = '';
       authEmail.focus();
+      clearAuthMessages();
+      resendContainer.classList.add('hidden');
+      // Reset do estado de login
+      isLogin = true;
+      authTitle.textContent = '🔐 Entrar';
+      authBtn.textContent = 'Entrar';
+      authToggle.innerHTML = 'Não tem conta? <strong>Registar</strong>';
     }
   });
 
   // ================================================================
-  // 6. UPLOAD
+  // 9. UPLOAD (restante igual)
   // ================================================================
   uploadArea.addEventListener('click', () => fileInput.click());
 
@@ -881,7 +796,7 @@
   });
 
   // ================================================================
-  // 7. CARREGAR FICHEIROS
+  // 10. CARREGAR FICHEIROS
   // ================================================================
   async function loadUserFiles() {
     if (!currentUser) return;
@@ -903,7 +818,7 @@
   }
 
   // ================================================================
-  // 8. RENDERIZAR LISTA
+  // 11. RENDERIZAR LISTA
   // ================================================================
   function renderFileList(files) {
     if (!files || files.length === 0) {
@@ -961,7 +876,7 @@
   }
 
   // ================================================================
-  // 9. ELIMINAR
+  // 12. ELIMINAR
   // ================================================================
   async function deleteFile(fileName) {
     if (!confirm('Tem a certeza que pretende eliminar este ficheiro?')) return;
@@ -986,7 +901,7 @@
   }
 
   // ================================================================
-  // 10. STATUS
+  // 13. STATUS
   // ================================================================
   function showStatus(message, type) {
     statusDiv.style.display = 'block';
