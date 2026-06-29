@@ -877,49 +877,51 @@
     if (!currentUser) return;
 
     try {
-      const response = await fetch(`${API_BASE}/api/files?uid=${currentUser.uid}`);
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Erro ao carregar ficheiros');
-      allFiles = data.files || [];
-      // Remover ficheiros .keep (usados para criar pastas)
-      allFiles = allFiles.filter(f => !f.originalName.startsWith('.keep'));
-      updateFolderSelectors(allFiles);
-      renderFilteredFiles();
+        const response = await fetch(`${API_BASE}/api/files?uid=${currentUser.uid}`);
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Erro ao carregar ficheiros');
+        allFiles = data.files || [];
+        // NÃO REMOVER .keep AQUI! Vamos remover apenas na renderização.
+        updateFolderSelectors(allFiles);
+        renderFilteredFiles();
     } catch (error) {
-      console.error('❌ Erro ao carregar ficheiros:', error);
-      fileList.innerHTML = `
-        <div class="empty-state">
-          <span class="emoji">⚠️</span>
-          <p>Erro ao carregar ficheiros: ${error.message}</p>
-        </div>
-      `;
+        console.error('❌ Erro ao carregar ficheiros:', error);
+        fileList.innerHTML = `
+            <div class="empty-state">
+                <span class="emoji">⚠️</span>
+                <p>Erro ao carregar ficheiros: ${error.message}</p>
+            </div>
+        `;
     }
-  }
+}
 
   // ================================================================
   // 12. FILTRAR E RENDERIZAR
   // ================================================================
-  function renderFilteredFiles() {
+ function renderFilteredFiles() {
     let filtered = allFiles;
 
-    // Filtrar por pasta
+    // Filtrar por pasta (usando caminhos completos)
     if (currentFolder === 'raiz') {
-      filtered = filtered.filter(f => {
-        const parts = f.fileName.split('/');
-        return parts.length === 3; // users/uid/ficheiro (sem pasta)
-      });
+        filtered = filtered.filter(f => {
+            const parts = f.fileName.split('/');
+            return parts.length === 3; // users/uid/ficheiro (sem pasta)
+        });
     } else if (currentFolder) {
-      filtered = filtered.filter(f => f.fileName.includes(`/${currentFolder}/`));
+        filtered = filtered.filter(f => f.fileName.includes(`/${currentFolder}/`));
     }
 
     // Filtrar por pesquisa (nome)
     if (searchTerm.trim()) {
-      const term = searchTerm.trim().toLowerCase();
-      filtered = filtered.filter(f => f.originalName.toLowerCase().includes(term));
+        const term = searchTerm.trim().toLowerCase();
+        filtered = filtered.filter(f => f.originalName.toLowerCase().includes(term));
     }
 
-    renderFileList(filtered);
-  }
+    // Remover ficheiros .keep da lista VISUAL (mas não de allFiles)
+    const visibleFiles = filtered.filter(f => !f.originalName.startsWith('.keep'));
+
+    renderFileList(visibleFiles);
+}
 
   // ================================================================
   // 13. RENDERIZAR LISTA
@@ -983,38 +985,38 @@
   // 14. ATUALIZAR SELETORES DE PASTAS (filtro e destino)
   // ================================================================
   function updateFolderSelectors(files) {
+    // Extrair pastas de TODOS os ficheiros (incluindo .keep)
     const folders = new Set();
     files.forEach(f => {
-      const parts = f.fileName.split('/');
-      if (parts.length > 3) { // users/uid/pasta/...
-        folders.add(parts[2]);
-      }
+        const parts = f.fileName.split('/');
+        if (parts.length > 3) { // users/uid/pasta/...
+            folders.add(parts[2]);
+        }
     });
     const folderList = Array.from(folders);
 
     // Atualizar seletor de filtro (folderSelect)
     while (folderSelect.options.length > 2) {
-      folderSelect.remove(2);
+        folderSelect.remove(2);
     }
     folderList.forEach(f => {
-      const opt = document.createElement('option');
-      opt.value = f;
-      opt.textContent = `📁 ${f}`;
-      folderSelect.appendChild(opt);
+        const opt = document.createElement('option');
+        opt.value = f;
+        opt.textContent = `📁 ${f}`;
+        folderSelect.appendChild(opt);
     });
 
     // Atualizar seletor de destino (destFolderSelect)
     while (destFolderSelect.options.length > 1) {
-      destFolderSelect.remove(1);
+        destFolderSelect.remove(1);
     }
     folderList.forEach(f => {
-      const opt = document.createElement('option');
-      opt.value = f;
-      opt.textContent = f;
-      destFolderSelect.appendChild(opt);
+        const opt = document.createElement('option');
+        opt.value = f;
+        opt.textContent = f;
+        destFolderSelect.appendChild(opt);
     });
-  }
-
+}
   // ================================================================
   // 15. EVENTOS DE PESQUISA E PASTAS
   // ================================================================
