@@ -12,7 +12,6 @@ const PORT = process.env.PORT || 3000;
 const BUCKET_NAME = process.env.FIREBASE_STORAGE_BUCKET || 'projeto-shares.firebasestorage.app';
 
 // ========== INICIALIZAR FIREBASE ADMIN (com Firestore) ==========
-// Usar variáveis de ambiente ou ficheiro local
 let serviceAccount;
 const localPath = path.join(__dirname, 'firebase-adminsdk.json');
 if (fs.existsSync(localPath)) {
@@ -494,6 +493,133 @@ const server = http.createServer(async (req, res) => {
         return;
     }
 
+    // ===== MOVER FICHEIRO =====
+    if (req.method === 'POST' && req.url === '/api/move') {
+        let body = '';
+        req.on('data', (chunk) => { body += chunk; });
+        req.on('end', async () => {
+            try {
+                const { fileName, destFolder, uid } = JSON.parse(body);
+
+                if (!fileName || !uid) {
+                    res.writeHead(400, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ error: 'fileName e uid são obrigatórios' }));
+                    return;
+                }
+
+                // Verificar se o ficheiro pertence ao utilizador
+                if (!fileName.startsWith(`users/${uid}/`)) {
+                    res.writeHead(403, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ error: 'Não tem permissão para mover este ficheiro' }));
+                    return;
+                }
+
+                // Extrair o nome encriptado e a pasta atual
+                const pathParts = fileName.split('/');
+                const encryptedName = pathParts.pop();
+                const currentFolder = pathParts.length > 3 ? pathParts[2] : '';
+
+                // Se a pasta de destino for igual à atual, não fazer nada
+                if (destFolder === currentFolder) {
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ message: 'Ficheiro já está na pasta pretendida.' }));
+                    return;
+                }
+
+                const token = await getAccessToken();
+
+                // Construir o novo caminho
+                const destFolderPath = destFolder ? `${destFolder}/` : '';
+                const newFileName = `users/${uid}/${destFolderPath}${encryptedName}`;
+
+                // ===== COPIAR O FICHEIRO =====
+                const copyUrl = `https://storage.googleapis.com/storage/v1/b/${BUCKET_NAME}/o/${encodeURIComponent(fileName)}/copyTo/b/${BUCKET_NAME}/o/${encodeURIComponent(newFileName)}`;
+
+                await new Promise((resolve, reject) => {
+                    const options = {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        }
+                    };
+                    const req = https.request(copyUrl, options, (res) => {
+                        let data = '';
+                        res.on('data', (chunk) => { data += chunk; });
+                        res.on('end', () => {
+                            try {
+                                const response = JSON.parse(data);
+                                if (response.name) {
+                                    console.log('✅ Ficheiro copiado para:', newFileName);
+                                    resolve();
+                                } else {
+                                    reject(new Error('Erro ao copiar: ' + JSON.stringify(response)));
+                                }
+                            } catch (error) {
+                                reject(new Error('Erro ao processar resposta da cópia: ' + error.message));
+                            }
+                        });
+                    });
+                    req.on('error', (error) => {
+                        reject(new Error('Erro na requisição de cópia: ' + error.message));
+                    });
+                    req.write(JSON.stringify({}));
+                    req.end();
+                });
+
+                // ===== ELIMINAR O ORIGINAL =====
+                const deleteUrl = `https://storage.googleapis.com/storage/v1/b/${BUCKET_NAME}/o/${encodeURIComponent(fileName)}`;
+                await new Promise((resolve, reject) => {
+                    const options = {
+                        method: 'DELETE',
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    };
+                    const req = https.request(deleteUrl, options, (res) => {
+                        if (res.statusCode === 204) {
+                            console.log('🗑️ Original eliminado:', fileName);
+                            resolve();
+                        } else {
+                            let data = '';
+                            res.on('data', (chunk) => { data += chunk; });
+                            res.on('end', () => {
+                                try {
+                                    const response = JSON.parse(data);
+                                    reject(new Error(response.error?.message || 'Erro ao eliminar original'));
+                                } catch {
+                                    reject(new Error('Erro ' + res.statusCode));
+                                }
+                            });
+                        }
+                    });
+                    req.on('error', (error) => {
+                        reject(new Error('Erro na requisição de eliminação: ' + error.message));
+                    });
+                    req.end();
+                });
+
+                // ===== ATUALIZAR METADADOS NO FIRESTORE =====
+                const oldDocRef = db.collection('users').doc(uid).collection('files').doc(encryptedName);
+                const doc = await oldDocRef.get();
+                if (doc.exists) {
+                    const data = doc.data();
+                    data.folder = destFolder || '';
+                    data.uploadedAt = new Date().toISOString();
+                    await oldDocRef.set(data);
+                    console.log('📝 Metadados atualizados para:', encryptedName);
+                }
+
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ success: true, message: 'Ficheiro movido com sucesso!' }));
+
+            } catch (error) {
+                console.error('❌ Erro ao mover ficheiro:', error.message);
+                res.writeHead(500, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: error.message }));
+            }
+        });
+        return;
+    }
+
     // ===== PÁGINA PRINCIPAL =====
     if (req.method === 'GET' && req.url === '/') {
         const filePath = path.join(__dirname, 'public', 'index.html');
@@ -544,6 +670,7 @@ if (require.main === module) {
         console.log(`📤 Upload: POST http://localhost:${PORT}/api/upload`);
         console.log(`📄 Listar: GET http://localhost:${PORT}/api/files?uid=...`);
         console.log(`🗑️ Eliminar: DELETE http://localhost:${PORT}/api/delete`);
+        console.log(`📂 Mover: POST http://localhost:${PORT}/api/move`);
         console.log(`🏥 Health: GET http://localhost:${PORT}/api/health`);
     });
 }

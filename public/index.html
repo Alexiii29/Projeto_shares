@@ -128,6 +128,18 @@
       color: white;
     }
     .btn-google:hover { background: #c53929; transform: translateY(-2px); }
+    .btn-move {
+      background: #f0ad4e;
+      color: white;
+      border: none;
+      padding: 0.2rem 0.6rem;
+      border-radius: 0.375rem;
+      cursor: pointer;
+      font-size: 0.7rem;
+      font-weight: 500;
+      transition: background 0.2s;
+    }
+    .btn-move:hover { background: #ec971f; }
 
     /* ===== AUTH FORM ===== */
     .auth-form {
@@ -376,7 +388,7 @@
     @media (min-width: 480px) { .file-item .file-name { font-size: 0.9rem; } }
     .file-item .file-size { font-size: 0.7rem; color: #666; }
     .file-item .file-date { font-size: 0.65rem; color: #999; }
-    .file-item .file-actions { display: flex; gap: 0.5rem; margin-top: 0.3rem; flex-wrap: wrap; }
+    .file-item .file-actions { display: flex; gap: 0.4rem; margin-top: 0.3rem; flex-wrap: wrap; }
     .btn-download {
       background: #667eea;
       color: white;
@@ -399,6 +411,39 @@
     /* ===== BOTÃO DE UPLOAD PRINCIPAL ===== */
     #uploadBtn { width: 100%; margin-top: 1rem; padding: 0.8rem; font-size: 1rem; }
     @media (min-width: 480px) { #uploadBtn { padding: 0.9rem; font-size: 1.1rem; } }
+
+    /* ===== MODAL ===== */
+    #moveModal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.5);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+    }
+    #moveModal .modal-content {
+      background: white;
+      padding: 2rem;
+      border-radius: 1rem;
+      max-width: 400px;
+      width: 90%;
+    }
+    #moveModal h3 { margin-bottom: 1rem; }
+    #moveModal p { margin-bottom: 0.5rem; }
+    #moveModal select {
+      width: 100%;
+      padding: 0.5rem;
+      border: 1px solid #ddd;
+      border-radius: 0.5rem;
+      margin-bottom: 1rem;
+    }
+    #moveModal .modal-actions {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: flex-end;
+    }
 
     /* ===== RESPONSIVE ===== */
     @media (max-width: 400px) {
@@ -509,7 +554,21 @@
       </div>
     </div>
   </div>
+</div>
 
+<!-- ===== MODAL MOVER ===== -->
+<div id="moveModal">
+  <div class="modal-content">
+    <h3>📂 Mover ficheiro</h3>
+    <p id="moveFileName">Ficheiro: </p>
+    <select id="moveDestSelect">
+      <option value="">Raiz</option>
+    </select>
+    <div class="modal-actions">
+      <button class="btn btn-sm" id="moveCancelBtn" style="background: #ccc;">Cancelar</button>
+      <button class="btn btn-sm btn-primary" id="moveConfirmBtn">Mover</button>
+    </div>
+  </div>
 </div>
 
 <!-- ============================================================ -->
@@ -517,9 +576,9 @@
 <!-- ============================================================ -->
 <script>
   // ================================================================
-  // 0. URL DO BACKEND (substituir se necessário)
+  // 0. URL DO BACKEND
   // ================================================================
-  const API_BASE = 'https://projeto-shares.onrender.com'; // ✅ URL correta do backend
+  const API_BASE = 'https://projeto-shares.onrender.com';
 
   // ================================================================
   // 1. CONFIGURAÇÃO DO FIREBASE
@@ -563,11 +622,17 @@
   const progressDiv = document.getElementById('progress');
   const progressBar = document.getElementById('progressBar');
 
-  // Elementos novos
   const searchInput = document.getElementById('searchInput');
   const folderSelect = document.getElementById('folderSelect');
   const newFolderBtn = document.getElementById('newFolderBtn');
   const destFolderSelect = document.getElementById('destFolderSelect');
+
+  // Modal
+  const moveModal = document.getElementById('moveModal');
+  const moveFileName = document.getElementById('moveFileName');
+  const moveDestSelect = document.getElementById('moveDestSelect');
+  const moveCancelBtn = document.getElementById('moveCancelBtn');
+  const moveConfirmBtn = document.getElementById('moveConfirmBtn');
 
   // ================================================================
   // 3. VARIÁVEIS DE ESTADO
@@ -575,9 +640,10 @@
   let isLogin = true;
   let selectedFiles = [];
   let currentUser = null;
-  let allFiles = [];           // todos os ficheiros do utilizador
-  let currentFolder = '';      // pasta selecionada para filtro ('' = todas, 'raiz' = raiz)
+  let allFiles = [];
+  let currentFolder = '';
   let searchTerm = '';
+  let currentMoveFile = null;
 
   // ================================================================
   // 4. FUNÇÕES DE UI
@@ -611,7 +677,7 @@
   authToggle.addEventListener('click', toggleAuthMode);
 
   // ================================================================
-  // 5. AUTH COM EMAIL/SENHA (com verificação)
+  // 5. AUTH
   // ================================================================
   async function handleAuth() {
     const email = authEmail.value.trim();
@@ -667,7 +733,7 @@
   authPassword.addEventListener('keydown', (e) => { if (e.key === 'Enter') handleAuth(); });
 
   // ================================================================
-  // 6. LOGIN COM GOOGLE (com seletor de conta)
+  // 6. LOGIN COM GOOGLE
   // ================================================================
   googleBtn.addEventListener('click', async () => {
     try {
@@ -714,7 +780,7 @@
   });
 
   // ================================================================
-  // 9. AUTH STATE CHANGED (com verificação de email)
+  // 9. AUTH STATE CHANGED
   // ================================================================
   auth.onAuthStateChanged(async (user) => {
     if (user) {
@@ -753,7 +819,7 @@
   });
 
   // ================================================================
-  // 10. UPLOAD MÚLTIPLO (com destino de pasta)
+  // 10. UPLOAD MÚLTIPLO
   // ================================================================
   uploadArea.addEventListener('click', () => fileInput.click());
 
@@ -871,57 +937,57 @@
   });
 
   // ================================================================
-  // 11. CARREGAR FICHEIROS (com filtros)
+  // 11. CARREGAR FICHEIROS
   // ================================================================
   async function loadUserFiles() {
     if (!currentUser) return;
 
     try {
-        const response = await fetch(`${API_BASE}/api/files?uid=${currentUser.uid}`);
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error || 'Erro ao carregar ficheiros');
-        allFiles = data.files || [];
-        // NÃO REMOVER .keep AQUI! Vamos remover apenas na renderização.
-        updateFolderSelectors(allFiles);
-        renderFilteredFiles();
+      const response = await fetch(`${API_BASE}/api/files?uid=${currentUser.uid}`);
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Erro ao carregar ficheiros');
+      allFiles = data.files || [];
+      // NÃO REMOVER .keep AQUI!
+      updateFolderSelectors(allFiles);
+      renderFilteredFiles();
     } catch (error) {
-        console.error('❌ Erro ao carregar ficheiros:', error);
-        fileList.innerHTML = `
-            <div class="empty-state">
-                <span class="emoji">⚠️</span>
-                <p>Erro ao carregar ficheiros: ${error.message}</p>
-            </div>
-        `;
+      console.error('❌ Erro ao carregar ficheiros:', error);
+      fileList.innerHTML = `
+        <div class="empty-state">
+          <span class="emoji">⚠️</span>
+          <p>Erro ao carregar ficheiros: ${error.message}</p>
+        </div>
+      `;
     }
-}
+  }
 
   // ================================================================
   // 12. FILTRAR E RENDERIZAR
   // ================================================================
- function renderFilteredFiles() {
+  function renderFilteredFiles() {
     let filtered = allFiles;
 
-    // Filtrar por pasta (usando caminhos completos)
+    // Filtrar por pasta
     if (currentFolder === 'raiz') {
-        filtered = filtered.filter(f => {
-            const parts = f.fileName.split('/');
-            return parts.length === 3; // users/uid/ficheiro (sem pasta)
-        });
+      filtered = filtered.filter(f => {
+        const parts = f.fileName.split('/');
+        return parts.length === 3;
+      });
     } else if (currentFolder) {
-        filtered = filtered.filter(f => f.fileName.includes(`/${currentFolder}/`));
+      filtered = filtered.filter(f => f.fileName.includes(`/${currentFolder}/`));
     }
 
     // Filtrar por pesquisa (nome)
     if (searchTerm.trim()) {
-        const term = searchTerm.trim().toLowerCase();
-        filtered = filtered.filter(f => f.originalName.toLowerCase().includes(term));
+      const term = searchTerm.trim().toLowerCase();
+      filtered = filtered.filter(f => f.originalName.toLowerCase().includes(term));
     }
 
-    // Remover ficheiros .keep da lista VISUAL (mas não de allFiles)
+    // Remover .keep da lista VISUAL
     const visibleFiles = filtered.filter(f => !f.originalName.startsWith('.keep'));
 
     renderFileList(visibleFiles);
-}
+  }
 
   // ================================================================
   // 13. RENDERIZAR LISTA
@@ -972,6 +1038,7 @@
           <div class="file-date">📅 ${date}</div>
           <div class="file-actions">
             <a href="${file.url}" download class="btn-download">📥 Download</a>
+            <button class="btn-move" data-filename="${file.fileName}" data-currentfolder="${file.folder}">📂 Mover</button>
             <button class="btn-danger-sm" onclick="deleteFile('${file.fileName}')">🗑️</button>
           </div>
         </div>
@@ -982,41 +1049,41 @@
   }
 
   // ================================================================
-  // 14. ATUALIZAR SELETORES DE PASTAS (filtro e destino)
+  // 14. ATUALIZAR SELETORES DE PASTAS
   // ================================================================
   function updateFolderSelectors(files) {
-    // Extrair pastas de TODOS os ficheiros (incluindo .keep)
     const folders = new Set();
     files.forEach(f => {
-        const parts = f.fileName.split('/');
-        if (parts.length > 3) { // users/uid/pasta/...
-            folders.add(parts[2]);
-        }
+      const parts = f.fileName.split('/');
+      if (parts.length > 3) {
+        folders.add(parts[2]);
+      }
     });
     const folderList = Array.from(folders);
 
-    // Atualizar seletor de filtro (folderSelect)
+    // Seletor de filtro
     while (folderSelect.options.length > 2) {
-        folderSelect.remove(2);
+      folderSelect.remove(2);
     }
     folderList.forEach(f => {
-        const opt = document.createElement('option');
-        opt.value = f;
-        opt.textContent = `📁 ${f}`;
-        folderSelect.appendChild(opt);
+      const opt = document.createElement('option');
+      opt.value = f;
+      opt.textContent = `📁 ${f}`;
+      folderSelect.appendChild(opt);
     });
 
-    // Atualizar seletor de destino (destFolderSelect)
+    // Seletor de destino (upload)
     while (destFolderSelect.options.length > 1) {
-        destFolderSelect.remove(1);
+      destFolderSelect.remove(1);
     }
     folderList.forEach(f => {
-        const opt = document.createElement('option');
-        opt.value = f;
-        opt.textContent = f;
-        destFolderSelect.appendChild(opt);
+      const opt = document.createElement('option');
+      opt.value = f;
+      opt.textContent = f;
+      destFolderSelect.appendChild(opt);
     });
-}
+  }
+
   // ================================================================
   // 15. EVENTOS DE PESQUISA E PASTAS
   // ================================================================
@@ -1060,7 +1127,79 @@
   });
 
   // ================================================================
-  // 17. ELIMINAR
+  // 17. MOVER FICHEIRO (Modal)
+  // ================================================================
+  function openMoveModal(fileName, currentFolder) {
+    currentMoveFile = { fileName, currentFolder };
+    // Preencher o select com as pastas disponíveis (exceto a atual)
+    const folders = [];
+    allFiles.forEach(f => {
+      const parts = f.fileName.split('/');
+      if (parts.length > 3) {
+        const folder = parts[2];
+        if (folder !== currentFolder && !folders.includes(folder)) {
+          folders.push(folder);
+        }
+      }
+    });
+    while (moveDestSelect.options.length > 1) {
+      moveDestSelect.remove(1);
+    }
+    folders.forEach(f => {
+      const opt = document.createElement('option');
+      opt.value = f;
+      opt.textContent = f;
+      moveDestSelect.appendChild(opt);
+    });
+    // Se houver pastas, selecionar a primeira
+    if (folders.length > 0) {
+      moveDestSelect.value = folders[0];
+    }
+    const name = fileName.split('/').pop();
+    moveFileName.textContent = `Ficheiro: ${name}`;
+    moveModal.style.display = 'flex';
+  }
+
+  moveCancelBtn.addEventListener('click', () => {
+    moveModal.style.display = 'none';
+    currentMoveFile = null;
+  });
+
+  moveConfirmBtn.addEventListener('click', async () => {
+    if (!currentMoveFile) return;
+    const destFolder = moveDestSelect.value;
+    const { fileName } = currentMoveFile;
+    try {
+      const response = await fetch(`${API_BASE}/api/move`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fileName, destFolder, uid: currentUser.uid })
+      });
+      const data = await response.json();
+      if (response.ok) {
+        showStatus('✅ Ficheiro movido com sucesso!', 'success');
+        moveModal.style.display = 'none';
+        currentMoveFile = null;
+        loadUserFiles();
+      } else {
+        showStatus('❌ ' + (data.error || 'Erro ao mover'), 'error');
+      }
+    } catch (error) {
+      showStatus('❌ ' + error.message, 'error');
+    }
+  });
+
+  // Delegar evento para os botões "Mover" (criados dinamicamente)
+  document.addEventListener('click', function(e) {
+    if (e.target.classList.contains('btn-move')) {
+      const fileName = e.target.dataset.filename;
+      const currentFolder = e.target.dataset.currentfolder || '';
+      openMoveModal(fileName, currentFolder);
+    }
+  });
+
+  // ================================================================
+  // 18. ELIMINAR
   // ================================================================
   async function deleteFile(fileName) {
     if (!confirm('Tem a certeza que pretende eliminar este ficheiro?')) return;
@@ -1085,7 +1224,7 @@
   }
 
   // ================================================================
-  // 18. STATUS
+  // 19. STATUS
   // ================================================================
   function showStatus(message, type) {
     statusDiv.style.display = 'block';
