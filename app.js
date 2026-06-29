@@ -18,6 +18,7 @@ if (fs.existsSync(localPath)) {
     serviceAccount = require(localPath);
     console.log('✅ Credenciais carregadas do ficheiro local.');
 } else {
+    // Certifica-te de que estas variáveis estão definidas no Render
     serviceAccount = {
         type: 'service_account',
         project_id: process.env.FIREBASE_PROJECT_ID,
@@ -51,6 +52,7 @@ async function getUserFilesMetadata(uid) {
         snapshot.forEach(doc => {
             metadata[doc.id] = doc.data();
         });
+        console.log(`📦 ${Object.keys(metadata).length} metadados lidos do Firestore para ${uid}`);
         return metadata;
     } catch (error) {
         console.error('❌ Erro ao ler metadados do Firestore:', error.message);
@@ -67,7 +69,7 @@ async function deleteFileMetadata(uid, encryptedName) {
     }
 }
 
-// ========== FUNÇÃO PARA GERAR JWT SEM jsonwebtoken ==========
+// ========== FUNÇÃO PARA GERAR JWT (sem jsonwebtoken) ==========
 function generateJWT(payload, privateKey) {
     const header = { alg: 'RS256', typ: 'JWT' };
     const encodedHeader = Buffer.from(JSON.stringify(header))
@@ -332,6 +334,45 @@ async function deleteFile(fileName, uid, token) {
     await deleteFileMetadata(uid, encryptedName);
 }
 
+// ========== FUNÇÃO PARA DEFINIR ACL PÚBLICA ==========
+async function setPublicAcl(fileName, token) {
+    const aclUrl = `https://storage.googleapis.com/storage/v1/b/${BUCKET_NAME}/o/${encodeURIComponent(fileName)}/acl`;
+    const aclData = JSON.stringify({ entity: 'allUsers', role: 'READER' });
+
+    return new Promise((resolve, reject) => {
+        const options = {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+                'Content-Length': Buffer.byteLength(aclData)
+            }
+        };
+        const req = https.request(aclUrl, options, (res) => {
+            let data = '';
+            res.on('data', (chunk) => { data += chunk; });
+            res.on('end', () => {
+                try {
+                    const response = JSON.parse(data);
+                    if (response.role === 'READER') {
+                        console.log('✅ ACL pública definida para:', fileName);
+                        resolve();
+                    } else {
+                        reject(new Error('Erro ao definir ACL: ' + JSON.stringify(response)));
+                    }
+                } catch (error) {
+                    reject(new Error('Erro ao processar resposta da ACL: ' + error.message));
+                }
+            });
+        });
+        req.on('error', (error) => {
+            reject(new Error('Erro na requisição ACL: ' + error.message));
+        });
+        req.write(aclData);
+        req.end();
+    });
+}
+
 // ========== PARSE MULTIPART ==========
 function parseMultipart(buffer, boundary) {
     const parts = [];
@@ -507,19 +548,16 @@ const server = http.createServer(async (req, res) => {
                     return;
                 }
 
-                // Verificar se o ficheiro pertence ao utilizador
                 if (!fileName.startsWith(`users/${uid}/`)) {
                     res.writeHead(403, { 'Content-Type': 'application/json' });
                     res.end(JSON.stringify({ error: 'Não tem permissão para mover este ficheiro' }));
                     return;
                 }
 
-                // Extrair o nome encriptado e a pasta atual
                 const pathParts = fileName.split('/');
                 const encryptedName = pathParts.pop();
                 const currentFolder = pathParts.length > 3 ? pathParts[2] : '';
 
-                // Se a pasta de destino for igual à atual, não fazer nada
                 if (destFolder === currentFolder) {
                     res.writeHead(200, { 'Content-Type': 'application/json' });
                     res.end(JSON.stringify({ message: 'Ficheiro já está na pasta pretendida.' }));
@@ -528,7 +566,6 @@ const server = http.createServer(async (req, res) => {
 
                 const token = await getAccessToken();
 
-                // Construir o novo caminho
                 const destFolderPath = destFolder ? `${destFolder}/` : '';
                 const newFileName = `users/${uid}/${destFolderPath}${encryptedName}`;
 
@@ -566,6 +603,9 @@ const server = http.createServer(async (req, res) => {
                     req.write(JSON.stringify({}));
                     req.end();
                 });
+
+                // ===== TORNAR O NOVO FICHEIRO PÚBLICO =====
+                await setPublicAcl(newFileName, token);
 
                 // ===== ELIMINAR O ORIGINAL =====
                 const deleteUrl = `https://storage.googleapis.com/storage/v1/b/${BUCKET_NAME}/o/${encodeURIComponent(fileName)}`;
@@ -663,7 +703,6 @@ const server = http.createServer(async (req, res) => {
 // Exportar para uso em Cloud Functions (opcional)
 module.exports = { server };
 
-// Se for executado diretamente (não importado), iniciar o servidor
 if (require.main === module) {
     server.listen(PORT, () => {
         console.log(`🚀 Servidor HTTP puro em http://localhost:${PORT}`);
