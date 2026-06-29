@@ -2,55 +2,116 @@
 <html lang="pt">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5" />
   <title>📤 Meus Documentos</title>
 
-  <!-- Firebase SDK (para autenticação) -->
+  <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
 
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+    /* ===== RESET E BASE ===== */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html {
+      font-size: 16px;
+      scroll-behavior: smooth;
+    }
+
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       min-height: 100vh;
-      padding: 20px;
+      padding: 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
-    .container { max-width: 1000px; margin: 0 auto; }
+
+    .container {
+      max-width: 1100px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    /* ===== CARDS ===== */
     .card {
       background: white;
-      border-radius: 20px;
-      padding: 30px;
-      margin-bottom: 20px;
-      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+      border-radius: 1.25rem;
+      padding: 1.5rem;
+      margin-bottom: 1.25rem;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+      transition: box-shadow 0.3s ease;
     }
-    .hidden { display: none !important; }
+
+    @media (min-width: 768px) {
+      .card {
+        padding: 2rem;
+      }
+    }
+
+    .hidden {
+      display: none !important;
+    }
 
     /* ===== HEADER ===== */
     .header {
       display: flex;
-      justify-content: space-between;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 15px;
-      margin-bottom: 20px;
+      flex-direction: column;
+      gap: 0.75rem;
+      margin-bottom: 1.5rem;
     }
-    .header h1 { font-size: 24px; color: #333; }
+
+    @media (min-width: 600px) {
+      .header {
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+      }
+    }
+
+    .header h1 {
+      font-size: 1.4rem;
+      color: #333;
+      text-align: center;
+    }
+
+    @media (min-width: 600px) {
+      .header h1 {
+        font-size: 1.8rem;
+        text-align: left;
+      }
+    }
+
     .header h1 span {
       background: linear-gradient(135deg, #667eea, #764ba2);
-      background-clip: text;
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
+      background-clip: text;
     }
+
     .user-info {
       display: flex;
       align-items: center;
-      gap: 15px;
+      justify-content: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
     }
+
+    @media (min-width: 600px) {
+      .user-info {
+        justify-content: flex-end;
+      }
+    }
+
     .user-avatar {
-      width: 40px;
-      height: 40px;
+      width: 2.5rem;
+      height: 2.5rem;
       border-radius: 50%;
       background: #667eea;
       color: white;
@@ -58,223 +119,486 @@
       align-items: center;
       justify-content: center;
       font-weight: bold;
-      font-size: 18px;
+      font-size: 1rem;
+      flex-shrink: 0;
     }
-    .user-email { font-size: 14px; color: #555; }
+
+    .user-email {
+      font-size: 0.85rem;
+      color: #555;
+      max-width: 150px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    @media (min-width: 480px) {
+      .user-email {
+        max-width: 200px;
+      }
+    }
+
+    /* ===== BOTÕES ===== */
     .btn {
-      padding: 8px 20px;
+      padding: 0.5rem 1rem;
       border: none;
-      border-radius: 10px;
+      border-radius: 0.625rem;
       cursor: pointer;
       font-weight: 600;
-      transition: all 0.3s;
+      transition: all 0.25s ease;
+      font-size: 0.9rem;
+      text-align: center;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      white-space: nowrap;
     }
-    .btn-primary { background: #667eea; color: white; }
-    .btn-primary:hover { background: #5a67d8; transform: translateY(-2px); }
-    .btn-danger { background: #e53e3e; color: white; }
-    .btn-danger:hover { background: #c53030; }
-    .btn-success { background: #48bb78; color: white; }
-    .btn-success:hover { background: #38a169; }
-    .btn-sm { padding: 5px 12px; font-size: 12px; }
+
+    .btn:active {
+      transform: scale(0.96);
+    }
+
+    .btn-primary {
+      background: #667eea;
+      color: white;
+    }
+    .btn-primary:hover {
+      background: #5a67d8;
+      transform: translateY(-2px);
+    }
+
+    .btn-danger {
+      background: #e53e3e;
+      color: white;
+    }
+    .btn-danger:hover {
+      background: #c53030;
+    }
+
+    .btn-success {
+      background: #48bb78;
+      color: white;
+    }
+    .btn-success:hover {
+      background: #38a169;
+    }
+
+    .btn-sm {
+      padding: 0.3rem 0.75rem;
+      font-size: 0.75rem;
+    }
+
     .btn-danger-sm {
       background: #e53e3e;
       color: white;
       border: none;
-      padding: 5px 12px;
-      border-radius: 8px;
+      padding: 0.3rem 0.75rem;
+      border-radius: 0.5rem;
       cursor: pointer;
-      font-size: 12px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      transition: background 0.2s;
     }
-    .btn-danger-sm:hover { background: #c53030; }
+    .btn-danger-sm:hover {
+      background: #c53030;
+    }
 
     /* ===== AUTH FORM ===== */
-    .auth-form { max-width: 400px; margin: 0 auto; }
-    .auth-form h2 { text-align: center; margin-bottom: 20px; color: #333; }
+    .auth-form {
+      max-width: 400px;
+      margin: 0 auto;
+      padding: 0 0.5rem;
+    }
+
+    .auth-form h2 {
+      text-align: center;
+      margin-bottom: 1.5rem;
+      color: #333;
+      font-size: 1.6rem;
+    }
+
     .auth-form input {
       width: 100%;
-      padding: 12px 16px;
+      padding: 0.8rem 1rem;
       border: 1px solid #ddd;
-      border-radius: 10px;
-      margin-bottom: 12px;
-      font-size: 15px;
+      border-radius: 0.625rem;
+      margin-bottom: 0.75rem;
+      font-size: 1rem;
+      transition: border-color 0.2s, box-shadow 0.2s;
     }
+
     .auth-form input:focus {
       outline: none;
       border-color: #667eea;
-      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
     }
-    .auth-form .btn { width: 100%; padding: 12px; font-size: 16px; }
+
+    .auth-form .btn {
+      width: 100%;
+      padding: 0.8rem;
+      font-size: 1.1rem;
+      margin-top: 0.25rem;
+    }
+
     .auth-toggle {
       color: #667eea;
       cursor: pointer;
       text-align: center;
-      margin-top: 12px;
+      margin-top: 1rem;
+      font-size: 0.95rem;
     }
-    .auth-toggle:hover { text-decoration: underline; }
+    .auth-toggle:hover {
+      text-decoration: underline;
+    }
+
     .auth-error {
       color: #e53e3e;
       text-align: center;
-      margin-bottom: 10px;
-      font-size: 14px;
+      margin-bottom: 0.75rem;
+      font-size: 0.9rem;
+      padding: 0.5rem;
+      background: #fff5f5;
+      border-radius: 0.5rem;
     }
 
     /* ===== UPLOAD AREA ===== */
     .upload-area {
       border: 2px dashed #ddd;
-      padding: 40px 20px;
+      padding: 2rem 1rem;
       text-align: center;
-      border-radius: 15px;
+      border-radius: 0.9375rem;
       cursor: pointer;
       transition: all 0.3s;
       background: #fafafa;
     }
-    .upload-area:hover { border-color: #667eea; background: #f0f0ff; }
-    .upload-area.dragover { border-color: #48bb78; background: #e8f5e9; }
-    .upload-icon { font-size: 48px; display: block; margin-bottom: 10px; }
-    .upload-area .sub-text { font-size: 13px; color: #999; margin-top: 8px; }
-    input[type="file"] { display: none; }
+
+    @media (min-width: 480px) {
+      .upload-area {
+        padding: 2.5rem 1.5rem;
+      }
+    }
+
+    .upload-area:hover {
+      border-color: #667eea;
+      background: #f0f0ff;
+    }
+
+    .upload-area.dragover {
+      border-color: #48bb78;
+      background: #e8f5e9;
+    }
+
+    .upload-icon {
+      font-size: 3rem;
+      display: block;
+      margin-bottom: 0.5rem;
+    }
+
+    @media (min-width: 480px) {
+      .upload-icon {
+        font-size: 3.5rem;
+      }
+    }
+
+    .upload-area p {
+      font-size: 1rem;
+      color: #555;
+    }
+
+    .upload-area .sub-text {
+      font-size: 0.8rem;
+      color: #999;
+      margin-top: 0.5rem;
+    }
+
+    input[type="file"] {
+      display: none;
+    }
 
     /* ===== PROGRESS ===== */
     #progress {
-      margin-top: 15px;
+      margin-top: 1rem;
       background: #f0f0f0;
-      border-radius: 10px;
+      border-radius: 0.625rem;
       overflow: hidden;
       display: none;
-      height: 24px;
+      height: 1.5rem;
     }
+
     #progressBar {
       height: 100%;
       background: linear-gradient(90deg, #667eea, #764ba2);
       width: 0%;
-      transition: width 0.3s;
+      transition: width 0.3s ease;
       display: flex;
       align-items: center;
       justify-content: center;
       color: white;
-      font-size: 13px;
+      font-size: 0.75rem;
       font-weight: 600;
     }
 
     /* ===== STATUS ===== */
     #status {
-      margin-top: 15px;
-      padding: 12px 18px;
-      border-radius: 10px;
+      margin-top: 1rem;
+      padding: 0.75rem 1rem;
+      border-radius: 0.625rem;
       display: none;
       font-weight: 500;
+      font-size: 0.95rem;
     }
-    .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
-    .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
-    .info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
 
-    /* ===== FILE LIST (COM PREVIEW) ===== */
+    .success {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+    .error {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+    .info {
+      background: #d1ecf1;
+      color: #0c5460;
+      border: 1px solid #bee5eb;
+    }
+
+    /* ===== FILE LIST ===== */
+    .section-title {
+      font-size: 1.2rem;
+      color: #333;
+      margin-top: 1.5rem;
+      margin-bottom: 0.75rem;
+    }
+
+    @media (min-width: 600px) {
+      .section-title {
+        font-size: 1.4rem;
+        margin-top: 2rem;
+      }
+    }
+
     .file-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-      gap: 20px;
-      margin-top: 15px;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 1rem;
+      margin-top: 0.75rem;
     }
+
+    @media (min-width: 480px) {
+      .file-grid {
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        gap: 1.25rem;
+      }
+    }
+
+    @media (min-width: 768px) {
+      .file-grid {
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 1.5rem;
+      }
+    }
+
     .file-item {
       background: #f8f9fa;
-      padding: 15px;
-      border-radius: 12px;
+      padding: 0.75rem;
+      border-radius: 0.75rem;
       border-left: 4px solid #667eea;
       display: flex;
       flex-direction: column;
-      gap: 4px;
+      gap: 0.3rem;
       transition: all 0.2s;
     }
+
     .file-item:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      transform: translateY(-3px);
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
     }
 
     .file-preview {
       width: 100%;
-      height: 150px;
+      aspect-ratio: 1 / 1;
       background: #f0f0f0;
-      border-radius: 8px;
+      border-radius: 0.5rem;
       display: flex;
       align-items: center;
       justify-content: center;
       overflow: hidden;
-      margin-bottom: 8px;
+      margin-bottom: 0.4rem;
+      min-height: 80px;
     }
+
+    @media (min-width: 480px) {
+      .file-preview {
+        min-height: 100px;
+      }
+    }
+
+    @media (min-width: 768px) {
+      .file-preview {
+        min-height: 120px;
+      }
+    }
+
     .file-preview-image {
       width: 100%;
       height: 100%;
       object-fit: cover;
-      border-radius: 8px;
+      border-radius: 0.5rem;
     }
+
     .file-preview-video {
       width: 100%;
       height: 100%;
       object-fit: cover;
-      border-radius: 8px;
+      border-radius: 0.5rem;
     }
+
     .file-preview-icon {
-      font-size: 48px;
+      font-size: 2.5rem;
       color: #667eea;
+    }
+
+    @media (min-width: 480px) {
+      .file-preview-icon {
+        font-size: 3rem;
+      }
     }
 
     .file-item .file-name {
       font-weight: 600;
-      font-size: 14px;
+      font-size: 0.8rem;
       word-break: break-all;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
     }
-    .file-item .file-size { font-size: 12px; color: #666; }
-    .file-item .file-date { font-size: 11px; color: #999; }
+
+    @media (min-width: 480px) {
+      .file-item .file-name {
+        font-size: 0.9rem;
+      }
+    }
+
+    .file-item .file-size {
+      font-size: 0.7rem;
+      color: #666;
+    }
+
+    .file-item .file-date {
+      font-size: 0.65rem;
+      color: #999;
+    }
+
     .file-item .file-actions {
       display: flex;
-      gap: 8px;
-      margin-top: 5px;
+      gap: 0.5rem;
+      margin-top: 0.3rem;
       flex-wrap: wrap;
     }
 
     .btn-download {
       background: #667eea;
       color: white;
-      padding: 4px 12px;
-      border-radius: 6px;
+      padding: 0.2rem 0.6rem;
+      border-radius: 0.375rem;
       text-decoration: none;
-      font-size: 13px;
+      font-size: 0.7rem;
       font-weight: 500;
-      transition: all 0.2s;
+      transition: background 0.2s;
       border: none;
       cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.2rem;
     }
+
     .btn-download:hover {
       background: #5a67d8;
-      transform: translateY(-1px);
     }
 
     .empty-state {
       text-align: center;
-      padding: 40px;
+      padding: 2rem 1rem;
       color: #999;
     }
-    .empty-state .emoji { font-size: 48px; display: block; margin-bottom: 10px; }
 
-    @media (max-width: 600px) {
-      .header { flex-direction: column; align-items: stretch; gap: 10px; }
-      .user-info { justify-content: space-between; }
-      .file-grid { grid-template-columns: 1fr 1fr; }
-      .card { padding: 20px; }
+    .empty-state .emoji {
+      font-size: 2.5rem;
+      display: block;
+      margin-bottom: 0.5rem;
     }
+
+    /* ===== BOTÃO DE UPLOAD PRINCIPAL ===== */
+    #uploadBtn {
+      width: 100%;
+      margin-top: 1rem;
+      padding: 0.8rem;
+      font-size: 1rem;
+    }
+
+    @media (min-width: 480px) {
+      #uploadBtn {
+        padding: 0.9rem;
+        font-size: 1.1rem;
+      }
+    }
+
+    /* ===== RESPONSIVE: AJUSTES FINOS ===== */
     @media (max-width: 400px) {
-      .file-grid { grid-template-columns: 1fr; }
+      body {
+        padding: 0.5rem;
+      }
+      .card {
+        padding: 1rem;
+        border-radius: 1rem;
+      }
+      .header h1 {
+        font-size: 1.2rem;
+      }
+      .user-email {
+        font-size: 0.75rem;
+        max-width: 120px;
+      }
+      .btn {
+        font-size: 0.8rem;
+        padding: 0.4rem 0.7rem;
+      }
+      .auth-form h2 {
+        font-size: 1.3rem;
+      }
+      .upload-area {
+        padding: 1.5rem 0.75rem;
+      }
+      .upload-icon {
+        font-size: 2.5rem;
+      }
+      .file-grid {
+        grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+        gap: 0.75rem;
+      }
+    }
+
+    /* ===== UTILITÁRIOS ===== */
+    .text-center {
+      text-align: center;
+    }
+    .mt-1 {
+      margin-top: 0.75rem;
+    }
+    .w-full {
+      width: 100%;
     }
   </style>
 </head>
+
 <body>
 
 <div class="container">
 
-  <!-- ============ AUTH CARD (Login / Registar) ============ -->
+  <!-- ============ AUTH CARD ============ -->
   <div id="authCard" class="card">
     <div class="auth-form">
       <h2 id="authTitle">🔐 Entrar</h2>
@@ -286,7 +610,7 @@
     </div>
   </div>
 
-  <!-- ============ DASHBOARD (Após login) ============ -->
+  <!-- ============ DASHBOARD ============ -->
   <div id="dashboardCard" class="card hidden">
 
     <!-- Header -->
@@ -307,7 +631,7 @@
       <input type="file" id="fileInput" />
     </div>
 
-    <button class="btn btn-success" id="uploadBtn" style="width:100%;margin-top:15px;" disabled>
+    <button class="btn btn-success" id="uploadBtn" disabled>
       🚀 Enviar Ficheiro
     </button>
 
@@ -315,12 +639,12 @@
     <div id="status"></div>
 
     <!-- File List -->
-    <h3 style="margin-top:25px; color:#333;">📄 Os meus documentos</h3>
+    <h3 class="section-title">📄 Os meus documentos</h3>
     <div id="fileList">
       <div class="empty-state">
         <span class="emoji">📭</span>
         <p>Nenhum documento enviado ainda.</p>
-        <p style="font-size:13px; color:#bbb;">Faça upload do seu primeiro ficheiro!</p>
+        <p style="font-size:0.85rem; color:#bbb;">Faça upload do seu primeiro ficheiro!</p>
       </div>
     </div>
   </div>
@@ -332,20 +656,20 @@
 <!-- ============================================================ -->
 <script>
   // ================================================================
-  // 0. URL DO BACKEND 
+  // 0. URL DO BACKEND (substituir pela URL do Render)
   // ================================================================
-  const API_BASE = 'https://projeto-shares.onrender.com'; 
+  const API_BASE = 'https://SEU_BACKEND_URL.onrender.com'; // ⚠️ SUBSTITUIR!
 
   // ================================================================
-  // 1. CONFIGURAÇÃO DO FIREBASE 
+  // 1. CONFIGURAÇÃO DO FIREBASE
   // ================================================================
   const firebaseConfig = {
-      apiKey: "AIzaSyB17rpVmAOpk7ywyhzjDveuSazjOS4tmAs",
-      authDomain: "projeto-shares.firebaseapp.com",
-      projectId: "projeto-shares",
-      storageBucket: "projeto-shares.firebasestorage.app",
-      messagingSenderId: "441089104132",
-      appId: "1:441089104132:web:7f3801b287b763904c1851"
+    apiKey: "AIzaSyB17rpVmAOpk7ywyhzjDveuSazjOS4tmAs",
+    authDomain: "projeto-shares.firebaseapp.com",
+    projectId: "projeto-shares",
+    storageBucket: "projeto-shares.firebasestorage.app",
+    messagingSenderId: "441089104132",
+    appId: "1:441089104132:web:7f3801b287b763904c1851"
   };
 
   firebase.initializeApp(firebaseConfig);
@@ -379,56 +703,55 @@
   let currentUser = null;
 
   // ================================================================
-  // 3. AUTH FUNCTIONS
+  // 3. AUTH
   // ================================================================
   function showAuthError(msg) {
-      authError.textContent = msg;
-      authError.classList.remove('hidden');
+    authError.textContent = msg;
+    authError.classList.remove('hidden');
   }
   function clearAuthError() {
-      authError.classList.add('hidden');
+    authError.classList.add('hidden');
   }
 
   function toggleAuthMode() {
-      isLogin = !isLogin;
-      authTitle.textContent = isLogin ? '🔐 Entrar' : '📝 Criar Conta';
-      authBtn.textContent = isLogin ? 'Entrar' : 'Registar';
-      authToggle.innerHTML = isLogin ?
-          'Não tem conta? <strong>Registar</strong>' :
-          'Já tem conta? <strong>Entrar</strong>';
-      clearAuthError();
-      authPassword.value = '';
+    isLogin = !isLogin;
+    authTitle.textContent = isLogin ? '🔐 Entrar' : '📝 Criar Conta';
+    authBtn.textContent = isLogin ? 'Entrar' : 'Registar';
+    authToggle.innerHTML = isLogin ?
+      'Não tem conta? <strong>Registar</strong>' :
+      'Já tem conta? <strong>Entrar</strong>';
+    clearAuthError();
+    authPassword.value = '';
   }
   authToggle.addEventListener('click', toggleAuthMode);
 
   async function handleAuth() {
-      const email = authEmail.value.trim();
-      const password = authPassword.value.trim();
+    const email = authEmail.value.trim();
+    const password = authPassword.value.trim();
 
-      if (!email || !password) {
-          showAuthError('Preencha todos os campos.');
-          return;
+    if (!email || !password) {
+      showAuthError('Preencha todos os campos.');
+      return;
+    }
+    clearAuthError();
+
+    try {
+      authBtn.disabled = true;
+      authBtn.textContent = '⏳ A carregar...';
+
+      if (isLogin) {
+        await auth.signInWithEmailAndPassword(email, password);
+      } else {
+        await auth.createUserWithEmailAndPassword(email, password);
       }
-      clearAuthError();
 
-      try {
-          authBtn.disabled = true;
-          authBtn.textContent = '⏳ A carregar...';
-
-          if (isLogin) {
-              await auth.signInWithEmailAndPassword(email, password);
-          } else {
-              await auth.createUserWithEmailAndPassword(email, password);
-          }
-
-          authBtn.textContent = isLogin ? 'Entrar' : 'Registar';
-          authBtn.disabled = false;
-
-      } catch (error) {
-          authBtn.disabled = false;
-          authBtn.textContent = isLogin ? 'Entrar' : 'Registar';
-          showAuthError(error.message);
-      }
+      authBtn.textContent = isLogin ? 'Entrar' : 'Registar';
+      authBtn.disabled = false;
+    } catch (error) {
+      authBtn.disabled = false;
+      authBtn.textContent = isLogin ? 'Entrar' : 'Registar';
+      showAuthError(error.message);
+    }
   }
   authBtn.addEventListener('click', handleAuth);
 
@@ -439,252 +762,236 @@
   // 4. LOGOUT
   // ================================================================
   logoutBtn.addEventListener('click', async () => {
-      await auth.signOut();
+    await auth.signOut();
   });
 
   // ================================================================
-  // 5. AUTH STATE CHANGED
+  // 5. AUTH STATE
   // ================================================================
   auth.onAuthStateChanged(async (user) => {
-      if (user) {
-          currentUser = user;
-          console.log('✅ Utilizador autenticado:', user.uid, user.email);
-          authCard.classList.add('hidden');
-          dashboardCard.classList.remove('hidden');
-          userEmail.textContent = user.email;
-          userAvatar.textContent = user.email.charAt(0).toUpperCase();
-          uploadBtn.disabled = true;
-          loadUserFiles();
-      } else {
-          currentUser = null;
-          authCard.classList.remove('hidden');
-          dashboardCard.classList.add('hidden');
-          authEmail.value = '';
-          authPassword.value = '';
-          authEmail.focus();
-      }
+    if (user) {
+      currentUser = user;
+      console.log('✅ Utilizador autenticado:', user.uid, user.email);
+      authCard.classList.add('hidden');
+      dashboardCard.classList.remove('hidden');
+      userEmail.textContent = user.email;
+      userAvatar.textContent = user.email.charAt(0).toUpperCase();
+      uploadBtn.disabled = true;
+      loadUserFiles();
+    } else {
+      currentUser = null;
+      authCard.classList.remove('hidden');
+      dashboardCard.classList.add('hidden');
+      authEmail.value = '';
+      authPassword.value = '';
+      authEmail.focus();
+    }
   });
 
   // ================================================================
-  // 6. UPLOAD (com API_BASE)
+  // 6. UPLOAD
   // ================================================================
   uploadArea.addEventListener('click', () => fileInput.click());
 
   fileInput.addEventListener('change', () => {
-      if (fileInput.files.length) {
-          selectedFile = fileInput.files[0];
-          uploadBtn.disabled = false;
-          showStatus(`📄 Selecionado: ${selectedFile.name} (${(selectedFile.size/1024).toFixed(2)} KB)`, 'info');
-      }
+    if (fileInput.files.length) {
+      selectedFile = fileInput.files[0];
+      uploadBtn.disabled = false;
+      showStatus(`📄 Selecionado: ${selectedFile.name} (${(selectedFile.size/1024).toFixed(2)} KB)`, 'info');
+    }
   });
 
   uploadArea.addEventListener('dragover', (e) => {
-      e.preventDefault();
-      uploadArea.classList.add('dragover');
+    e.preventDefault();
+    uploadArea.classList.add('dragover');
   });
   uploadArea.addEventListener('dragleave', () => {
-      uploadArea.classList.remove('dragover');
+    uploadArea.classList.remove('dragover');
   });
   uploadArea.addEventListener('drop', (e) => {
-      e.preventDefault();
-      uploadArea.classList.remove('dragover');
-      if (e.dataTransfer.files.length) {
-          selectedFile = e.dataTransfer.files[0];
-          fileInput.files = e.dataTransfer.files;
-          uploadBtn.disabled = false;
-          showStatus(`📄 Selecionado: ${selectedFile.name} (${(selectedFile.size/1024).toFixed(2)} KB)`, 'info');
-      }
+    e.preventDefault();
+    uploadArea.classList.remove('dragover');
+    if (e.dataTransfer.files.length) {
+      selectedFile = e.dataTransfer.files[0];
+      fileInput.files = e.dataTransfer.files;
+      uploadBtn.disabled = false;
+      showStatus(`📄 Selecionado: ${selectedFile.name} (${(selectedFile.size/1024).toFixed(2)} KB)`, 'info');
+    }
   });
 
   uploadBtn.addEventListener('click', async () => {
-      if (!selectedFile) {
-          showStatus('⚠️ Selecione um ficheiro!', 'error');
-          return;
-      }
-      if (!currentUser) {
-          showStatus('⚠️ Faça login primeiro!', 'error');
-          return;
-      }
+    if (!selectedFile) {
+      showStatus('⚠️ Selecione um ficheiro!', 'error');
+      return;
+    }
+    if (!currentUser) {
+      showStatus('⚠️ Faça login primeiro!', 'error');
+      return;
+    }
 
-      console.log('📤 A enviar com UID:', currentUser.uid);
+    const formData = new FormData();
+    formData.append('file', selectedFile);
+    formData.append('uid', currentUser.uid);
 
-      const formData = new FormData();
-      formData.append('file', selectedFile);
-      formData.append('uid', currentUser.uid);
+    uploadBtn.disabled = true;
+    progressDiv.style.display = 'block';
+    progressBar.style.width = '0%';
+    progressBar.textContent = '0%';
+    showStatus('⏳ A enviar...', 'info');
 
+    try {
+      const xhr = new XMLHttpRequest();
+      const result = await new Promise((resolve, reject) => {
+        xhr.open('POST', `${API_BASE}/api/upload`);
+        xhr.upload.addEventListener('progress', (e) => {
+          if (e.lengthComputable) {
+            const pct = Math.round((e.loaded / e.total) * 100);
+            progressBar.style.width = pct + '%';
+            progressBar.textContent = pct + '%';
+          }
+        });
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try { resolve(JSON.parse(xhr.responseText)); } catch { reject(new Error('Resposta inválida')); }
+          } else {
+            try { const d = JSON.parse(xhr.responseText); reject(new Error(d.error || d.details || 'Erro no servidor')); } catch { reject(new Error('Erro ' + xhr.status)); }
+          }
+        };
+        xhr.onerror = () => reject(new Error('Erro de rede'));
+        xhr.send(formData);
+      });
+
+      progressBar.style.width = '100%';
+      progressBar.textContent = '100%';
+      showStatus('✅ Ficheiro enviado com sucesso! 🎉', 'success');
+      selectedFile = null;
+      fileInput.value = '';
       uploadBtn.disabled = true;
-      progressDiv.style.display = 'block';
-      progressBar.style.width = '0%';
-      progressBar.textContent = '0%';
-      showStatus('⏳ A enviar...', 'info');
+      loadUserFiles();
 
-      try {
-          const xhr = new XMLHttpRequest();
-          const result = await new Promise((resolve, reject) => {
-              xhr.open('POST', `${API_BASE}/api/upload`);
-              xhr.upload.addEventListener('progress', (e) => {
-                  if (e.lengthComputable) {
-                      const pct = Math.round((e.loaded / e.total) * 100);
-                      progressBar.style.width = pct + '%';
-                      progressBar.textContent = pct + '%';
-                  }
-              });
-              xhr.onload = () => {
-                  if (xhr.status >= 200 && xhr.status < 300) {
-                      try { resolve(JSON.parse(xhr.responseText)); } catch { reject(new Error('Resposta inválida')); }
-                  } else {
-                      try { const d = JSON.parse(xhr.responseText);
-                          reject(new Error(d.error || d.details || 'Erro no servidor')); } catch { reject(new Error('Erro ' + xhr.status)); }
-                  }
-              };
-              xhr.onerror = () => reject(new Error('Erro de rede'));
-              xhr.send(formData);
-          });
-
-          progressBar.style.width = '100%';
-          progressBar.textContent = '100%';
-          showStatus('✅ Ficheiro enviado com sucesso! 🎉', 'success');
-          selectedFile = null;
-          fileInput.value = '';
-          uploadBtn.disabled = true;
-          loadUserFiles();
-
-      } catch (error) {
-          showStatus('❌ ' + error.message, 'error');
-      } finally {
-          uploadBtn.disabled = false;
-          setTimeout(() => {
-              progressDiv.style.display = 'none';
-              progressBar.style.width = '0%';
-          }, 3000);
-      }
+    } catch (error) {
+      showStatus('❌ ' + error.message, 'error');
+    } finally {
+      uploadBtn.disabled = false;
+      setTimeout(() => {
+        progressDiv.style.display = 'none';
+        progressBar.style.width = '0%';
+      }, 3000);
+    }
   });
 
   // ================================================================
-  // 7. CARREGAR FICHEIROS DO UTILIZADOR (com API_BASE)
+  // 7. CARREGAR FICHEIROS
   // ================================================================
   async function loadUserFiles() {
-      if (!currentUser) {
-          console.log('⚠️ Sem utilizador autenticado');
-          return;
-      }
+    if (!currentUser) return;
 
-      try {
-          console.log('📄 A carregar ficheiros para UID:', currentUser.uid);
-          const response = await fetch(`${API_BASE}/api/files?uid=${currentUser.uid}`);
-          const data = await response.json();
-          console.log('📦 Resposta da API:', data);
-
-          if (!response.ok) {
-              throw new Error(data.error || 'Erro ao carregar ficheiros');
-          }
-
-          renderFileList(data.files || []);
-
-      } catch (error) {
-          console.error('❌ Erro ao carregar ficheiros:', error);
-          fileList.innerHTML = `
-              <div class="empty-state">
-                  <span class="emoji">⚠️</span>
-                  <p>Erro ao carregar ficheiros: ${error.message}</p>
-              </div>
-          `;
-      }
+    try {
+      const response = await fetch(`${API_BASE}/api/files?uid=${currentUser.uid}`);
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Erro ao carregar ficheiros');
+      renderFileList(data.files || []);
+    } catch (error) {
+      console.error('❌ Erro ao carregar ficheiros:', error);
+      fileList.innerHTML = `
+        <div class="empty-state">
+          <span class="emoji">⚠️</span>
+          <p>Erro ao carregar ficheiros: ${error.message}</p>
+        </div>
+      `;
+    }
   }
 
   // ================================================================
-  // 8. RENDERIZAR LISTA DE FICHEIROS (COM PREVIEW)
+  // 8. RENDERIZAR LISTA
   // ================================================================
   function renderFileList(files) {
-      console.log('📄 A renderizar', files.length, 'ficheiros');
+    if (!files || files.length === 0) {
+      fileList.innerHTML = `
+        <div class="empty-state">
+          <span class="emoji">📭</span>
+          <p>Nenhum documento enviado ainda.</p>
+          <p style="font-size:0.85rem; color:#bbb;">Faça upload do seu primeiro ficheiro!</p>
+        </div>
+      `;
+      return;
+    }
 
-      if (!files || files.length === 0) {
-          fileList.innerHTML = `
-              <div class="empty-state">
-                  <span class="emoji">📭</span>
-                  <p>Nenhum documento enviado ainda.</p>
-                  <p style="font-size:13px; color:#bbb;">Faça upload do seu primeiro ficheiro!</p>
-              </div>
-          `;
-          return;
+    let html = '<div class="file-grid">';
+    files.forEach((file) => {
+      const sizeKB = (file.size / 1024).toFixed(2);
+      const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+      const sizeDisplay = file.size > 1024 * 1024 ? `${sizeMB} MB` : `${sizeKB} KB`;
+      const date = new Date(file.uploadedAt).toLocaleDateString('pt-PT');
+
+      const ext = file.originalName.split('.').pop().toLowerCase();
+      const isImage = ['jpg','jpeg','png','gif','webp','bmp','svg'].includes(ext);
+      const isVideo = ['mp4','webm','ogg','avi','mov'].includes(ext);
+      const isPDF = ext === 'pdf';
+      const isAudio = ['mp3','wav','ogg','aac'].includes(ext);
+
+      let previewHtml = '';
+      if (isImage) {
+        previewHtml = `<img src="${file.url}" alt="${file.originalName}" class="file-preview-image" loading="lazy" />`;
+      } else if (isVideo) {
+        previewHtml = `<video src="${file.url}" class="file-preview-video" muted></video>`;
+      } else if (isPDF) {
+        previewHtml = `<div class="file-preview-icon">📄</div>`;
+      } else if (isAudio) {
+        previewHtml = `<div class="file-preview-icon">🎵</div>`;
+      } else {
+        previewHtml = `<div class="file-preview-icon">📎</div>`;
       }
 
-      let html = '<div class="file-grid">';
-      files.forEach((file) => {
-          const sizeKB = (file.size / 1024).toFixed(2);
-          const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
-          const sizeDisplay = file.size > 1024 * 1024 ? `${sizeMB} MB` : `${sizeKB} KB`;
-          const date = new Date(file.uploadedAt).toLocaleDateString('pt-PT');
-
-          const fileExtension = file.originalName.split('.').pop().toLowerCase();
-          const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'].includes(fileExtension);
-          const isVideo = ['mp4', 'webm', 'ogg', 'avi', 'mov'].includes(fileExtension);
-          const isPDF = fileExtension === 'pdf';
-          const isAudio = ['mp3', 'wav', 'ogg', 'aac'].includes(fileExtension);
-
-          let previewHtml = '';
-          if (isImage) {
-              previewHtml = `<img src="${file.url}" alt="${file.originalName}" class="file-preview-image" loading="lazy" />`;
-          } else if (isVideo) {
-              previewHtml = `<video src="${file.url}" class="file-preview-video" muted></video>`;
-          } else if (isPDF) {
-              previewHtml = `<div class="file-preview-icon">📄</div>`;
-          } else if (isAudio) {
-              previewHtml = `<div class="file-preview-icon">🎵</div>`;
-          } else {
-              previewHtml = `<div class="file-preview-icon">📎</div>`;
-          }
-
-          html += `
-              <div class="file-item">
-                  <div class="file-preview">${previewHtml}</div>
-                  <div class="file-name" title="${file.originalName}">${file.originalName}</div>
-                  <div class="file-size">📏 ${sizeDisplay}</div>
-                  <div class="file-date">📅 ${date}</div>
-                  <div class="file-actions">
-                      <a href="${file.url}" download class="btn-download">📥 Download</a>
-                      <button class="btn-danger-sm" onclick="deleteFile('${file.fileName}')">🗑️</button>
-                  </div>
-              </div>
-          `;
-      });
-      html += '</div>';
-      fileList.innerHTML = html;
+      html += `
+        <div class="file-item">
+          <div class="file-preview">${previewHtml}</div>
+          <div class="file-name" title="${file.originalName}">${file.originalName}</div>
+          <div class="file-size">📏 ${sizeDisplay}</div>
+          <div class="file-date">📅 ${date}</div>
+          <div class="file-actions">
+            <a href="${file.url}" download class="btn-download">📥 Download</a>
+            <button class="btn-danger-sm" onclick="deleteFile('${file.fileName}')">🗑️</button>
+          </div>
+        </div>
+      `;
+    });
+    html += '</div>';
+    fileList.innerHTML = html;
   }
 
   // ================================================================
-  // 9. ELIMINAR FICHEIRO (com API_BASE)
+  // 9. ELIMINAR
   // ================================================================
   async function deleteFile(fileName) {
-      if (!confirm('Tem a certeza que pretende eliminar este ficheiro?')) return;
-      if (!currentUser) return;
+    if (!confirm('Tem a certeza que pretende eliminar este ficheiro?')) return;
+    if (!currentUser) return;
 
-      try {
-          const response = await fetch(`${API_BASE}/api/delete`, {
-              method: 'DELETE',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ fileName, uid: currentUser.uid })
-          });
-
-          const data = await response.json();
-          if (response.ok) {
-              showStatus('✅ Ficheiro eliminado!', 'success');
-              loadUserFiles();
-          } else {
-              showStatus('❌ ' + (data.error || 'Erro ao eliminar'), 'error');
-          }
-      } catch (error) {
-          showStatus('❌ ' + error.message, 'error');
+    try {
+      const response = await fetch(`${API_BASE}/api/delete`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fileName, uid: currentUser.uid })
+      });
+      const data = await response.json();
+      if (response.ok) {
+        showStatus('✅ Ficheiro eliminado!', 'success');
+        loadUserFiles();
+      } else {
+        showStatus('❌ ' + (data.error || 'Erro ao eliminar'), 'error');
       }
+    } catch (error) {
+      showStatus('❌ ' + error.message, 'error');
+    }
   }
 
   // ================================================================
-  // 10. STATUS HELPER
+  // 10. STATUS
   // ================================================================
   function showStatus(message, type) {
-      statusDiv.style.display = 'block';
-      statusDiv.className = type;
-      statusDiv.textContent = message;
+    statusDiv.style.display = 'block';
+    statusDiv.className = type;
+    statusDiv.textContent = message;
   }
 </script>
 
