@@ -228,6 +228,40 @@
     .upload-area .sub-text { font-size: 0.8rem; color: #999; margin-top: 0.5rem; }
     input[type="file"] { display: none; }
 
+    /* ===== CONTROLS (pesquisa e pastas) ===== */
+    .file-controls {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin: 1rem 0;
+    }
+    .file-controls input[type="text"] {
+      flex: 1;
+      min-width: 150px;
+      padding: 0.5rem 0.75rem;
+      border: 1px solid #ddd;
+      border-radius: 0.5rem;
+      font-size: 0.9rem;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .file-controls input[type="text"]:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+    }
+    .file-controls select {
+      padding: 0.5rem;
+      border: 1px solid #ddd;
+      border-radius: 0.5rem;
+      font-size: 0.9rem;
+      background: white;
+      cursor: pointer;
+    }
+    .file-controls select:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+
     /* ===== PROGRESS ===== */
     #progress {
       margin-top: 1rem;
@@ -267,10 +301,10 @@
     .section-title {
       font-size: 1.2rem;
       color: #333;
-      margin-top: 1.5rem;
+      margin-top: 0.5rem;
       margin-bottom: 0.75rem;
     }
-    @media (min-width: 600px) { .section-title { font-size: 1.4rem; margin-top: 2rem; } }
+    @media (min-width: 600px) { .section-title { font-size: 1.4rem; } }
     .file-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
@@ -354,6 +388,8 @@
       .upload-area { padding: 1.5rem 0.75rem; }
       .upload-icon { font-size: 2.5rem; }
       .file-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 0.75rem; }
+      .file-controls { flex-direction: column; }
+      .file-controls input[type="text"] { width: 100%; }
     }
     .text-center { text-align: center; }
     .mt-1 { margin-top: 0.75rem; }
@@ -385,7 +421,7 @@
 
       <div class="auth-toggle" id="authToggle">Não tem conta? <strong>Registar</strong></div>
 
-      <!-- Link para reenviar verificação (aparece apenas quando necessário) -->
+      <!-- Link para reenviar verificação -->
       <div id="resendContainer" class="hidden text-center mt-1">
         <span style="font-size:0.9rem; color:#666;">Não recebeu o email de verificação?</span>
         <span class="auth-resend" id="resendVerifyBtn">Reenviar</span>
@@ -421,6 +457,16 @@
     <div id="progress"><div id="progressBar">0%</div></div>
     <div id="status"></div>
 
+    <!-- Controls: Pesquisa e Pastas -->
+    <div class="file-controls">
+      <input type="text" id="searchInput" placeholder="🔍 Pesquisar ficheiros..." />
+      <select id="folderSelect">
+        <option value="">📁 Todas as pastas</option>
+        <option value="raiz">📁 Raiz</option>
+      </select>
+      <button class="btn btn-primary btn-sm" id="newFolderBtn">📂 Nova Pasta</button>
+    </div>
+
     <!-- File List -->
     <h3 class="section-title">📄 Os meus documentos</h3>
     <div id="fileList">
@@ -441,7 +487,7 @@
   // ================================================================
   // 0. URL DO BACKEND (substituir pela URL do Render)
   // ================================================================
-  const API_BASE = 'https://projeto-shares.onrender.com'; // 
+  const API_BASE = 'https://SEU_BACKEND_URL.onrender.com'; // ⚠️ SUBSTITUIR!
 
   // ================================================================
   // 1. CONFIGURAÇÃO DO FIREBASE
@@ -485,12 +531,23 @@
   const progressDiv = document.getElementById('progress');
   const progressBar = document.getElementById('progressBar');
 
-  let isLogin = true;
-  let selectedFiles = []; // <-- AGORA É UM ARRAY
-  let currentUser = null;
+  // Elementos novos
+  const searchInput = document.getElementById('searchInput');
+  const folderSelect = document.getElementById('folderSelect');
+  const newFolderBtn = document.getElementById('newFolderBtn');
 
   // ================================================================
-  // 3. FUNÇÕES DE UI
+  // 3. VARIÁVEIS DE ESTADO
+  // ================================================================
+  let isLogin = true;
+  let selectedFiles = [];
+  let currentUser = null;
+  let allFiles = [];           // todos os ficheiros do utilizador
+  let currentFolder = '';      // pasta selecionada ('' = todas, 'raiz' = raiz)
+  let searchTerm = '';
+
+  // ================================================================
+  // 4. FUNÇÕES DE UI
   // ================================================================
   function showAuthError(msg) {
     authError.textContent = msg;
@@ -521,7 +578,7 @@
   authToggle.addEventListener('click', toggleAuthMode);
 
   // ================================================================
-  // 4. AUTH COM EMAIL/SENHA (com verificação)
+  // 5. AUTH COM EMAIL/SENHA (com verificação)
   // ================================================================
   async function handleAuth() {
     const email = authEmail.value.trim();
@@ -577,7 +634,7 @@
   authPassword.addEventListener('keydown', (e) => { if (e.key === 'Enter') handleAuth(); });
 
   // ================================================================
-  // 5. LOGIN COM GOOGLE (com seletor de conta)
+  // 6. LOGIN COM GOOGLE (com seletor de conta)
   // ================================================================
   googleBtn.addEventListener('click', async () => {
     try {
@@ -600,7 +657,7 @@
   });
 
   // ================================================================
-  // 6. REENVIAR VERIFICAÇÃO
+  // 7. REENVIAR VERIFICAÇÃO
   // ================================================================
   resendVerifyBtn.addEventListener('click', async () => {
     showAuthInfo('📧 A reenviar...');
@@ -610,7 +667,6 @@
         showAuthError('Por favor, insira o seu email para reenviar a verificação.');
         return;
       }
-      // Como não temos o utilizador autenticado, pedimos que tente login primeiro.
       showAuthInfo('Para reenviar o email de verificação, faça login com a sua palavra-passe e depois poderá reenviar.');
     } catch (error) {
       showAuthError(error.message);
@@ -618,14 +674,14 @@
   });
 
   // ================================================================
-  // 7. LOGOUT
+  // 8. LOGOUT
   // ================================================================
   logoutBtn.addEventListener('click', async () => {
     await auth.signOut();
   });
 
   // ================================================================
-  // 8. AUTH STATE CHANGED (com verificação de email)
+  // 9. AUTH STATE CHANGED (com verificação de email)
   // ================================================================
   auth.onAuthStateChanged(async (user) => {
     if (user) {
@@ -664,11 +720,10 @@
   });
 
   // ================================================================
-  // 9. UPLOAD MÚLTIPLO
+  // 10. UPLOAD MÚLTIPLO
   // ================================================================
   uploadArea.addEventListener('click', () => fileInput.click());
 
-  // Selecionar ficheiros
   fileInput.addEventListener('change', () => {
     if (fileInput.files.length) {
       selectedFiles = Array.from(fileInput.files);
@@ -678,7 +733,6 @@
     }
   });
 
-  // Drag & Drop
   uploadArea.addEventListener('dragover', (e) => {
     e.preventDefault();
     uploadArea.classList.add('dragover');
@@ -698,7 +752,6 @@
     }
   });
 
-  // Upload
   uploadBtn.addEventListener('click', async () => {
     if (selectedFiles.length === 0) {
       showStatus('⚠️ Selecione pelo menos um ficheiro!', 'error');
@@ -725,6 +778,10 @@
         const formData = new FormData();
         formData.append('file', file);
         formData.append('uid', currentUser.uid);
+        // Envia a pasta atual (se houver)
+        if (currentFolder && currentFolder !== 'raiz') {
+          formData.append('folder', currentFolder);
+        }
 
         await new Promise((resolve, reject) => {
           const xhr = new XMLHttpRequest();
@@ -761,7 +818,6 @@
         });
       }
 
-      // Todos enviados
       progressBar.style.width = '100%';
       progressBar.textContent = '100%';
       showStatus(`✅ ${results.length} ficheiros enviados com sucesso! 🎉`, 'success');
@@ -782,7 +838,7 @@
   });
 
   // ================================================================
-  // 10. CARREGAR FICHEIROS
+  // 11. CARREGAR FICHEIROS (com filtros)
   // ================================================================
   async function loadUserFiles() {
     if (!currentUser) return;
@@ -791,7 +847,11 @@
       const response = await fetch(`${API_BASE}/api/files?uid=${currentUser.uid}`);
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Erro ao carregar ficheiros');
-      renderFileList(data.files || []);
+      allFiles = data.files || [];
+      // Remover ficheiros .keep (usados para criar pastas)
+      allFiles = allFiles.filter(f => !f.originalName.startsWith('.keep'));
+      updateFolderSelect(allFiles);
+      renderFilteredFiles();
     } catch (error) {
       console.error('❌ Erro ao carregar ficheiros:', error);
       fileList.innerHTML = `
@@ -804,15 +864,40 @@
   }
 
   // ================================================================
-  // 11. RENDERIZAR LISTA
+  // 12. FILTRAR E RENDERIZAR
+  // ================================================================
+  function renderFilteredFiles() {
+    let filtered = allFiles;
+
+    // Filtrar por pasta
+    if (currentFolder === 'raiz') {
+      filtered = filtered.filter(f => {
+        const parts = f.fileName.split('/');
+        return parts.length === 3; // users/uid/ficheiro (sem pasta)
+      });
+    } else if (currentFolder) {
+      filtered = filtered.filter(f => f.fileName.includes(`/${currentFolder}/`));
+    }
+
+    // Filtrar por pesquisa (nome)
+    if (searchTerm.trim()) {
+      const term = searchTerm.trim().toLowerCase();
+      filtered = filtered.filter(f => f.originalName.toLowerCase().includes(term));
+    }
+
+    renderFileList(filtered);
+  }
+
+  // ================================================================
+  // 13. RENDERIZAR LISTA
   // ================================================================
   function renderFileList(files) {
     if (!files || files.length === 0) {
       fileList.innerHTML = `
         <div class="empty-state">
           <span class="emoji">📭</span>
-          <p>Nenhum documento enviado ainda.</p>
-          <p style="font-size:0.85rem; color:#bbb;">Faça upload do seu primeiro ficheiro!</p>
+          <p>Nenhum documento encontrado.</p>
+          <p style="font-size:0.85rem; color:#bbb;">Faça upload do seu primeiro ficheiro ou crie uma pasta!</p>
         </div>
       `;
       return;
@@ -862,7 +947,73 @@
   }
 
   // ================================================================
-  // 12. ELIMINAR
+  // 14. ATUALIZAR SELETOR DE PASTAS
+  // ================================================================
+  function updateFolderSelect(files) {
+    const folders = new Set();
+    files.forEach(f => {
+      const parts = f.fileName.split('/');
+      if (parts.length > 3) { // users/uid/pasta/...
+        folders.add(parts[2]);
+      }
+    });
+    // Limpar opções (manter as primeiras: "Todas" e "Raiz")
+    while (folderSelect.options.length > 2) {
+      folderSelect.remove(2);
+    }
+    folders.forEach(f => {
+      const opt = document.createElement('option');
+      opt.value = f;
+      opt.textContent = `📁 ${f}`;
+      folderSelect.appendChild(opt);
+    });
+  }
+
+  // ================================================================
+  // 15. EVENTOS DE PESQUISA E PASTAS
+  // ================================================================
+  searchInput.addEventListener('input', (e) => {
+    searchTerm = e.target.value;
+    renderFilteredFiles();
+  });
+
+  folderSelect.addEventListener('change', (e) => {
+    currentFolder = e.target.value;
+    renderFilteredFiles();
+  });
+
+  // ================================================================
+  // 16. NOVA PASTA
+  // ================================================================
+  newFolderBtn.addEventListener('click', () => {
+    const name = prompt('Nome da nova pasta:');
+    if (name && name.trim()) {
+      const folderName = name.trim();
+      // Criar um ficheiro .keep vazio dentro da pasta
+      const blob = new Blob([''], { type: 'text/plain' });
+      const file = new File([blob], '.keep', { type: 'text/plain' });
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('uid', currentUser.uid);
+      formData.append('folder', folderName);
+
+      fetch(`${API_BASE}/api/upload`, {
+        method: 'POST',
+        body: formData
+      })
+      .then(res => res.json())
+      .then(() => {
+        showStatus(`📂 Pasta "${folderName}" criada!`, 'success');
+        loadUserFiles();
+      })
+      .catch(err => {
+        showStatus('❌ Erro ao criar pasta: ' + err.message, 'error');
+      });
+    }
+  });
+
+  // ================================================================
+  // 17. ELIMINAR
   // ================================================================
   async function deleteFile(fileName) {
     if (!confirm('Tem a certeza que pretende eliminar este ficheiro?')) return;
@@ -887,7 +1038,7 @@
   }
 
   // ================================================================
-  // 13. STATUS
+  // 18. STATUS
   // ================================================================
   function showStatus(message, type) {
     statusDiv.style.display = 'block';

@@ -31,7 +31,7 @@ function writeMetadata(metadata) {
     }
 }
 
-// ========== FUNÇÃO PARA GERAR JWT  ==========
+// ========== FUNÇÃO PARA GERAR JWT SEM jsonwebtoken ==========
 function generateJWT(payload, privateKey) {
     const header = { alg: 'RS256', typ: 'JWT' };
     const encodedHeader = Buffer.from(JSON.stringify(header))
@@ -60,31 +60,32 @@ function generateJWT(payload, privateKey) {
 // ========== FUNÇÃO PARA OBTER TOKEN OAuth2 ==========
 function getAccessToken() {
     return new Promise((resolve, reject) => {
-        const serviceAccountPath = path.join(__dirname, 'firebase-adminsdk.json');
+        // Usar variáveis de ambiente ou ficheiro local
         let serviceAccount;
-try {
-    // Tentar ler do ficheiro (apenas para desenvolvimento local)
-    const fs = require('fs');
-    const path = require('path');
-    const localPath = path.join(__dirname, 'firebase-adminsdk.json');
-    if (fs.existsSync(localPath)) {
-        serviceAccount = require(localPath);
-        console.log('✅ Credenciais carregadas do ficheiro local.');
-    } else {
-        // Em produção (Render), usar variáveis de ambiente
-        serviceAccount = {
-            type: 'service_account',
-            project_id: process.env.FIREBASE_PROJECT_ID,
-            private_key: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
-            client_email: process.env.FIREBASE_CLIENT_EMAIL,
-            token_uri: 'https://oauth2.googleapis.com/token',
-        };
-        console.log('✅ Credenciais carregadas das variáveis de ambiente.');
-    }
-} catch (error) {
-    console.error('❌ Erro ao carregar credenciais:', error.message);
-    process.exit(1);
-}
+        const localPath = path.join(__dirname, 'firebase-adminsdk.json');
+        if (fs.existsSync(localPath)) {
+            try {
+                serviceAccount = require(localPath);
+                console.log('✅ Credenciais carregadas do ficheiro local.');
+            } catch (err) {
+                reject(new Error('Erro ao ler ficheiro de credenciais: ' + err.message));
+                return;
+            }
+        } else {
+            // Em produção (Render), usar variáveis de ambiente
+            if (!process.env.FIREBASE_PROJECT_ID || !process.env.FIREBASE_PRIVATE_KEY || !process.env.FIREBASE_CLIENT_EMAIL) {
+                reject(new Error('Variáveis de ambiente do Firebase não definidas.'));
+                return;
+            }
+            serviceAccount = {
+                type: 'service_account',
+                project_id: process.env.FIREBASE_PROJECT_ID,
+                private_key: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+                client_email: process.env.FIREBASE_CLIENT_EMAIL,
+                token_uri: 'https://oauth2.googleapis.com/token',
+            };
+            console.log('✅ Credenciais carregadas das variáveis de ambiente.');
+        }
 
         const now = Math.floor(Date.now() / 1000);
         const payload = {
@@ -95,7 +96,6 @@ try {
             iat: now
         };
 
-        // Usar a função nativa em vez de jwt.sign
         const token = generateJWT(payload, serviceAccount.private_key);
 
         const postData = `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${token}`;
@@ -147,16 +147,17 @@ function generateEncryptedName(originalName, uid) {
     return `${hash}-${timestamp}${extension}`;
 }
 
-// ========== FUNÇÃO PARA FAZER UPLOAD (COM NOME ENCRIPTADO) ==========
-async function uploadToFirebase(fileBuffer, originalName, mimetype, uid) {
+// ========== FUNÇÃO PARA FAZER UPLOAD (COM PASTA) ==========
+async function uploadToFirebase(fileBuffer, originalName, mimetype, uid, folder = '') {
     const token = await getAccessToken();
 
     const encryptedName = generateEncryptedName(originalName, uid);
-    const newFileName = `users/${uid}/${encryptedName}`;
+    const folderPath = folder ? `${folder}/` : '';
+    const newFileName = `users/${uid}/${folderPath}${encryptedName}`;
 
     const uploadUrl = `https://storage.googleapis.com/upload/storage/v1/b/${BUCKET_NAME}/o?uploadType=media&name=${encodeURIComponent(newFileName)}&predefinedAcl=publicRead`;
 
-    console.log('⏳ A fazer upload com nome encriptado:', encryptedName);
+    console.log('⏳ A fazer upload com nome encriptado:', encryptedName, 'na pasta:', folder || '(raiz)');
 
     await new Promise((resolve, reject) => {
         const options = {
@@ -199,7 +200,8 @@ async function uploadToFirebase(fileBuffer, originalName, mimetype, uid) {
         originalName: originalName,
         uploadedAt: new Date().toISOString(),
         size: fileBuffer.length,
-        encryptedName: encryptedName
+        encryptedName: encryptedName,
+        folder: folder || '' // guardar a pasta para referência
     };
     writeMetadata(metadata);
     console.log('📝 Metadados guardados para o ficheiro:', originalName);
@@ -211,7 +213,8 @@ async function uploadToFirebase(fileBuffer, originalName, mimetype, uid) {
         encryptedName: encryptedName,
         originalName: originalName,
         size: fileBuffer.length,
-        uploadedAt: new Date().toISOString()
+        uploadedAt: new Date().toISOString(),
+        folder: folder || ''
     };
 }
 
@@ -260,7 +263,8 @@ async function listUserFiles(uid, token) {
                             originalName: meta.originalName || encryptedName,
                             size: parseInt(item.size || 0),
                             url: `https://storage.googleapis.com/${BUCKET_NAME}/${fullPath}`,
-                            uploadedAt: meta.uploadedAt || new Date().toISOString()
+                            uploadedAt: meta.uploadedAt || new Date().toISOString(),
+                            folder: meta.folder || ''
                         };
                     });
 
@@ -408,6 +412,7 @@ const server = http.createServer(async (req, res) => {
                 const parts = parseMultipart(buffer, boundary);
                 const filePart = parts.find(p => p.name === 'file');
                 const uidPart = parts.find(p => p.name === 'uid');
+                const folderPart = parts.find(p => p.name === 'folder');
 
                 if (!filePart || !filePart.data || filePart.data.length === 0) {
                     res.writeHead(400, { 'Content-Type': 'application/json' });
@@ -416,16 +421,19 @@ const server = http.createServer(async (req, res) => {
                 }
 
                 const uid = uidPart ? uidPart.value : 'anonymous';
+                const folder = folderPart ? folderPart.value : '';
 
                 console.log(`📄 Ficheiro original: ${filePart.filename}`);
                 console.log(`📏 Tamanho: ${filePart.data.length} bytes`);
                 console.log(`👤 Utilizador: ${uid}`);
+                console.log(`📁 Pasta: ${folder || '(raiz)'}`);
 
                 const result = await uploadToFirebase(
                     filePart.data,
                     filePart.filename,
                     'application/octet-stream',
-                    uid
+                    uid,
+                    folder
                 );
 
                 res.writeHead(201, { 'Content-Type': 'application/json' });
