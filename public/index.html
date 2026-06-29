@@ -141,6 +141,42 @@
     }
     .btn-move:hover { background: #ec971f; }
 
+    /* ===== PASTAS: BOTÕES RENOMEAR/ELIMINAR ===== */
+    .folder-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.3rem 0;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    .folder-item .folder-name {
+      font-weight: 500;
+    }
+    .folder-actions {
+      display: flex;
+      gap: 0.3rem;
+    }
+    .btn-folder-edit {
+      background: #f0ad4e;
+      color: white;
+      border: none;
+      border-radius: 0.3rem;
+      padding: 0.1rem 0.4rem;
+      cursor: pointer;
+      font-size: 0.75rem;
+    }
+    .btn-folder-edit:hover { background: #ec971f; }
+    .btn-folder-delete {
+      background: #e53e3e;
+      color: white;
+      border: none;
+      border-radius: 0.3rem;
+      padding: 0.1rem 0.4rem;
+      cursor: pointer;
+      font-size: 0.75rem;
+    }
+    .btn-folder-delete:hover { background: #c53030; }
+
     /* ===== AUTH FORM ===== */
     .auth-form {
       max-width: 400px;
@@ -240,7 +276,7 @@
     .upload-area .sub-text { font-size: 0.8rem; color: #999; margin-top: 0.5rem; }
     input[type="file"] { display: none; }
 
-    /* ===== CONTROLS (pesquisa, pastas, destino) ===== */
+    /* ===== CONTROLS ===== */
     .file-controls {
       display: flex;
       gap: 0.75rem;
@@ -274,7 +310,6 @@
       border-color: #667eea;
     }
 
-    /* ===== DESTINO DA PASTA (upload) ===== */
     .dest-folder-selector {
       display: flex;
       gap: 0.75rem;
@@ -295,6 +330,22 @@
       background: white;
       cursor: pointer;
       min-width: 120px;
+    }
+
+    /* ===== FOLDER LIST ===== */
+    #folderListContainer {
+      margin-top: 0.5rem;
+      padding: 0.5rem;
+      background: #f9f9f9;
+      border-radius: 0.5rem;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    #folderListContainer .empty-folders {
+      color: #999;
+      font-size: 0.9rem;
+      text-align: center;
+      padding: 0.5rem;
     }
 
     /* ===== PROGRESS ===== */
@@ -412,7 +463,7 @@
     #uploadBtn { width: 100%; margin-top: 1rem; padding: 0.8rem; font-size: 1rem; }
     @media (min-width: 480px) { #uploadBtn { padding: 0.9rem; font-size: 1.1rem; } }
 
-    /* ===== MODAL ===== */
+    /* ===== MODAL MOVER ===== */
     #moveModal {
       display: none;
       position: fixed;
@@ -544,13 +595,18 @@
       <button class="btn btn-primary btn-sm" id="newFolderBtn">📂 Nova Pasta</button>
     </div>
 
+    <!-- Lista de pastas com ações -->
+    <div id="folderListContainer">
+      <div class="empty-folders">Nenhuma pasta criada ainda.</div>
+    </div>
+
     <!-- File List -->
     <h3 class="section-title">📄 Os meus documentos</h3>
     <div id="fileList">
       <div class="empty-state">
         <span class="emoji">📭</span>
         <p>Nenhum documento enviado ainda.</p>
-        <p style="font-size:0.85rem; color:#bbb;">Faça upload do seu primeiro ficheiro!</p>
+        <p style="font-size:0.85rem; color:#bbb;">Faça upload do seu primeiro ficheiro ou crie uma pasta!</p>
       </div>
     </div>
   </div>
@@ -626,6 +682,7 @@
   const folderSelect = document.getElementById('folderSelect');
   const newFolderBtn = document.getElementById('newFolderBtn');
   const destFolderSelect = document.getElementById('destFolderSelect');
+  const folderListContainer = document.getElementById('folderListContainer');
 
   // Modal
   const moveModal = document.getElementById('moveModal');
@@ -937,7 +994,7 @@
   });
 
   // ================================================================
-  // 11. CARREGAR FICHEIROS
+  // 11. CARREGAR FICHEIROS E PASTAS
   // ================================================================
   async function loadUserFiles() {
     if (!currentUser) return;
@@ -947,9 +1004,9 @@
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Erro ao carregar ficheiros');
       allFiles = data.files || [];
-      // NÃO REMOVER .keep AQUI!
       updateFolderSelectors(allFiles);
       renderFilteredFiles();
+      renderFolderList(allFiles);
     } catch (error) {
       console.error('❌ Erro ao carregar ficheiros:', error);
       fileList.innerHTML = `
@@ -967,7 +1024,6 @@
   function renderFilteredFiles() {
     let filtered = allFiles;
 
-    // Filtrar por pasta
     if (currentFolder === 'raiz') {
       filtered = filtered.filter(f => {
         const parts = f.fileName.split('/');
@@ -977,15 +1033,12 @@
       filtered = filtered.filter(f => f.fileName.includes(`/${currentFolder}/`));
     }
 
-    // Filtrar por pesquisa (nome)
     if (searchTerm.trim()) {
       const term = searchTerm.trim().toLowerCase();
       filtered = filtered.filter(f => f.originalName.toLowerCase().includes(term));
     }
 
-    // Remover .keep da lista VISUAL
     const visibleFiles = filtered.filter(f => !f.originalName.startsWith('.keep'));
-
     renderFileList(visibleFiles);
   }
 
@@ -1061,7 +1114,6 @@
     });
     const folderList = Array.from(folders);
 
-    // Seletor de filtro
     while (folderSelect.options.length > 2) {
       folderSelect.remove(2);
     }
@@ -1072,7 +1124,6 @@
       folderSelect.appendChild(opt);
     });
 
-    // Seletor de destino (upload)
     while (destFolderSelect.options.length > 1) {
       destFolderSelect.remove(1);
     }
@@ -1085,7 +1136,54 @@
   }
 
   // ================================================================
-  // 15. EVENTOS DE PESQUISA E PASTAS
+  // 15. RENDERIZAR LISTA DE PASTAS COM AÇÕES
+  // ================================================================
+  function renderFolderList(files) {
+    const folders = new Set();
+    files.forEach(f => {
+      const parts = f.fileName.split('/');
+      if (parts.length > 3) {
+        folders.add(parts[2]);
+      }
+    });
+    const folderList = Array.from(folders);
+
+    if (folderList.length === 0) {
+      folderListContainer.innerHTML = `<div class="empty-folders">Nenhuma pasta criada ainda.</div>`;
+      return;
+    }
+
+    let html = '';
+    folderList.forEach(folder => {
+      html += `
+        <div class="folder-item">
+          <span class="folder-name">📁 ${folder}</span>
+          <div class="folder-actions">
+            <button class="btn-folder-edit" data-folder="${folder}">✏️</button>
+            <button class="btn-folder-delete" data-folder="${folder}">🗑️</button>
+          </div>
+        </div>
+      `;
+    });
+    folderListContainer.innerHTML = html;
+
+    // Event listeners para os botões
+    document.querySelectorAll('.btn-folder-edit').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const folderName = btn.dataset.folder;
+        renameFolder(folderName);
+      });
+    });
+    document.querySelectorAll('.btn-folder-delete').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const folderName = btn.dataset.folder;
+        deleteFolder(folderName);
+      });
+    });
+  }
+
+  // ================================================================
+  // 16. EVENTOS DE PESQUISA E PASTAS
   // ================================================================
   searchInput.addEventListener('input', (e) => {
     searchTerm = e.target.value;
@@ -1098,7 +1196,7 @@
   });
 
   // ================================================================
-  // 16. NOVA PASTA
+  // 17. NOVA PASTA
   // ================================================================
   newFolderBtn.addEventListener('click', () => {
     const name = prompt('Nome da nova pasta:');
@@ -1127,11 +1225,60 @@
   });
 
   // ================================================================
-  // 17. MOVER FICHEIRO (Modal - sem opção "Raiz")
+  // 18. ELIMINAR PASTA
+  // ================================================================
+  async function deleteFolder(folderName) {
+    if (!confirm(`Tem a certeza que pretende eliminar a pasta "${folderName}" e todo o seu conteúdo?`)) return;
+    try {
+      const response = await fetch(`${API_BASE}/api/delete-folder`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ uid: currentUser.uid, folderName })
+      });
+      const data = await response.json();
+      if (response.ok) {
+        showStatus(`🗑️ Pasta "${folderName}" eliminada!`, 'success');
+        loadUserFiles();
+      } else {
+        showStatus('❌ ' + (data.error || data.message || 'Erro ao eliminar pasta'), 'error');
+      }
+    } catch (error) {
+      showStatus('❌ ' + error.message, 'error');
+    }
+  }
+
+  // ================================================================
+  // 19. RENOMEAR PASTA
+  // ================================================================
+  async function renameFolder(oldFolderName) {
+    const newName = prompt(`Renomear pasta "${oldFolderName}" para:`, oldFolderName);
+    if (!newName || newName.trim() === oldFolderName) return;
+    const newFolderName = newName.trim();
+    if (!newFolderName) return;
+
+    try {
+      const response = await fetch(`${API_BASE}/api/rename-folder`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ uid: currentUser.uid, oldFolderName, newFolderName })
+      });
+      const data = await response.json();
+      if (response.ok) {
+        showStatus(`✏️ Pasta renomeada para "${newFolderName}"!`, 'success');
+        loadUserFiles();
+      } else {
+        showStatus('❌ ' + (data.error || data.message || 'Erro ao renomear pasta'), 'error');
+      }
+    } catch (error) {
+      showStatus('❌ ' + error.message, 'error');
+    }
+  }
+
+  // ================================================================
+  // 20. MOVER FICHEIRO (Modal - sem opção "Raiz")
   // ================================================================
   function openMoveModal(fileName, currentFolder) {
     currentMoveFile = { fileName, currentFolder };
-    // Recolher pastas disponíveis (excluindo a atual)
     const folders = [];
     allFiles.forEach(f => {
       const parts = f.fileName.split('/');
@@ -1143,7 +1290,6 @@
       }
     });
 
-    // Limpar opções (remover todas)
     while (moveDestSelect.options.length > 0) {
       moveDestSelect.remove(0);
     }
@@ -1162,7 +1308,6 @@
         opt.textContent = f;
         moveDestSelect.appendChild(opt);
       });
-      // Selecionar a primeira pasta
       moveDestSelect.value = folders[0];
       moveConfirmBtn.disabled = false;
     }
@@ -1208,7 +1353,6 @@
     }
   });
 
-  // Delegar evento para os botões "Mover" (criados dinamicamente)
   document.addEventListener('click', function(e) {
     if (e.target.classList.contains('btn-move')) {
       const fileName = e.target.dataset.filename;
@@ -1218,7 +1362,7 @@
   });
 
   // ================================================================
-  // 18. ELIMINAR
+  // 21. ELIMINAR
   // ================================================================
   async function deleteFile(fileName) {
     if (!confirm('Tem a certeza que pretende eliminar este ficheiro?')) return;
@@ -1243,7 +1387,7 @@
   }
 
   // ================================================================
-  // 19. STATUS
+  // 22. STATUS
   // ================================================================
   function showStatus(message, type) {
     statusDiv.style.display = 'block';
