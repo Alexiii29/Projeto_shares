@@ -591,7 +591,7 @@
       <input type="text" id="searchInput" placeholder="🔍 Pesquisar ficheiros..." />
       <select id="folderSelect">
         <option value="">📁 Todas as pastas</option>
-        <option value="raiz">📁 Raiz</option>
+        <!-- A opção "Raiz" foi removida -->
       </select>
       <button class="btn btn-primary btn-sm" id="newFolderBtn">📂 Nova Pasta</button>
     </div>
@@ -1020,19 +1020,16 @@
   }
 
   // ================================================================
-  // 12. FILTRAR E RENDERIZAR
+  // 12. FILTRAR E RENDERIZAR (sem opção "Raiz")
   // ================================================================
   function renderFilteredFiles() {
     let filtered = allFiles;
 
-    if (currentFolder === 'raiz') {
-      filtered = filtered.filter(f => {
-        const parts = f.fileName.split('/');
-        return parts.length === 3;
-      });
-    } else if (currentFolder) {
+    // Se uma pasta específica estiver selecionada (currentFolder não vazio)
+    if (currentFolder) {
       filtered = filtered.filter(f => f.fileName.includes(`/${currentFolder}/`));
     }
+    // Caso contrário (currentFolder === ''), mostra todos os ficheiros (raiz + pastas)
 
     if (searchTerm.trim()) {
       const term = searchTerm.trim().toLowerCase();
@@ -1103,7 +1100,7 @@
   }
 
   // ================================================================
-  // 14. ATUALIZAR SELETORES DE PASTAS
+  // 14. ATUALIZAR SELETORES DE PASTAS (sem "Raiz")
   // ================================================================
   function updateFolderSelectors(files) {
     const folders = new Set();
@@ -1115,9 +1112,9 @@
     });
     const folderList = Array.from(folders);
 
-    // Seletor de filtro
-    while (folderSelect.options.length > 2) {
-      folderSelect.remove(2);
+    // Seletor de filtro (apenas "Todas as pastas" + pastas dinâmicas)
+    while (folderSelect.options.length > 1) {
+      folderSelect.remove(1);
     }
     folderList.forEach(f => {
       const opt = document.createElement('option');
