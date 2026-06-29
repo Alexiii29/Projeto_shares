@@ -410,12 +410,12 @@
     <div class="upload-area" id="uploadArea">
       <span class="upload-icon">📁</span>
       <p><strong>Clique ou arraste</strong> ficheiros aqui</p>
-      <p class="sub-text">📷 Imagens · 📄 PDFs · 🎥 Vídeos (máx. 50MB)</p>
-      <input type="file" id="fileInput" />
+      <p class="sub-text">📷 Imagens · 📄 PDFs · 🎥 Vídeos (máx. 50MB) · <strong>Múltiplos</strong> permitidos</p>
+      <input type="file" id="fileInput" multiple />
     </div>
 
     <button class="btn btn-success" id="uploadBtn" disabled>
-      🚀 Enviar Ficheiro
+      🚀 Enviar Ficheiros
     </button>
 
     <div id="progress"><div id="progressBar">0%</div></div>
@@ -441,7 +441,7 @@
   // ================================================================
   // 0. URL DO BACKEND (substituir pela URL do Render)
   // ================================================================
-  const API_BASE = 'https://projeto-shares.onrender.com'; // <-- SUBSTITUIR!
+  const API_BASE = 'https://projeto-shares.onrender.com'; // 
 
   // ================================================================
   // 1. CONFIGURAÇÃO DO FIREBASE
@@ -486,9 +486,8 @@
   const progressBar = document.getElementById('progressBar');
 
   let isLogin = true;
-  let selectedFile = null;
+  let selectedFiles = []; // <-- AGORA É UM ARRAY
   let currentUser = null;
-  let pendingCredential = null; // para login com Google
 
   // ================================================================
   // 3. FUNÇÕES DE UI
@@ -539,11 +538,8 @@
       authBtn.textContent = '⏳ A carregar...';
 
       if (isLogin) {
-        // LOGIN
         const userCredential = await auth.signInWithEmailAndPassword(email, password);
         const user = userCredential.user;
-
-        // Verificar se o email está verificado
         if (!user.emailVerified) {
           await auth.signOut();
           showAuthError('⚠️ O seu email ainda não foi verificado. Verifique a sua caixa de correio.');
@@ -552,26 +548,16 @@
           authBtn.textContent = 'Entrar';
           return;
         }
-
-        // Login bem-sucedido
         authBtn.textContent = 'Entrar';
         authBtn.disabled = false;
-        // O onAuthStateChanged vai tratar do resto
-
       } else {
-        // REGISTO
         const userCredential = await auth.createUserWithEmailAndPassword(email, password);
         const user = userCredential.user;
-
-        // Enviar email de verificação
         await user.sendEmailVerification();
         showAuthInfo('📧 Enviámos um email de verificação para ' + email + '. Verifique a sua caixa de correio e clique no link para ativar a conta.');
-
-        // Deslogar para não entrar automaticamente
         await auth.signOut();
         authBtn.textContent = 'Registar';
         authBtn.disabled = false;
-        // Mudar para o modo login
         isLogin = true;
         authTitle.textContent = '🔐 Entrar';
         authBtn.textContent = 'Entrar';
@@ -579,7 +565,6 @@
         authPassword.value = '';
         resendContainer.classList.add('hidden');
       }
-
     } catch (error) {
       authBtn.disabled = false;
       authBtn.textContent = isLogin ? 'Entrar' : 'Registar';
@@ -588,63 +573,44 @@
   }
 
   authBtn.addEventListener('click', handleAuth);
-
   authEmail.addEventListener('keydown', (e) => { if (e.key === 'Enter') authPassword.focus(); });
   authPassword.addEventListener('keydown', (e) => { if (e.key === 'Enter') handleAuth(); });
 
   // ================================================================
-  // 5. LOGIN COM GOOGLE
+  // 5. LOGIN COM GOOGLE (com seletor de conta)
   // ================================================================
-  // ===== LOGIN COM GOOGLE =====
-googleBtn.addEventListener('click', async () => {
-  try {
-    googleBtn.disabled = true;
-    googleBtn.textContent = '⏳ A carregar...';
-    const provider = new firebase.auth.GoogleAuthProvider();
-    
-    // FORÇA A ESCOLHA DA CONTA SEMPRE
-    provider.setCustomParameters({ prompt: 'select_account' });
-    
-    const result = await auth.signInWithPopup(provider);
-    googleBtn.textContent = '🔴 Entrar com Google';
-    googleBtn.disabled = false;
-  } catch (error) {
-    googleBtn.textContent = '🔴 Entrar com Google';
-    googleBtn.disabled = false;
-    if (error.code === 'auth/popup-closed-by-user') {
-      showAuthError('Janela de login foi fechada. Tente novamente.');
-    } else {
-      showAuthError(error.message);
+  googleBtn.addEventListener('click', async () => {
+    try {
+      googleBtn.disabled = true;
+      googleBtn.textContent = '⏳ A carregar...';
+      const provider = new firebase.auth.GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: 'select_account' });
+      await auth.signInWithPopup(provider);
+      googleBtn.textContent = '🔴 Entrar com Google';
+      googleBtn.disabled = false;
+    } catch (error) {
+      googleBtn.textContent = '🔴 Entrar com Google';
+      googleBtn.disabled = false;
+      if (error.code === 'auth/popup-closed-by-user') {
+        showAuthError('Janela de login foi fechada. Tente novamente.');
+      } else {
+        showAuthError(error.message);
+      }
     }
-  }
-});
+  });
 
   // ================================================================
   // 6. REENVIAR VERIFICAÇÃO
   // ================================================================
   resendVerifyBtn.addEventListener('click', async () => {
+    showAuthInfo('📧 A reenviar...');
     try {
       const email = authEmail.value.trim();
       if (!email) {
         showAuthError('Por favor, insira o seu email para reenviar a verificação.');
         return;
       }
-      // Enviar novamente o email de verificação (requer que o utilizador esteja autenticado, mas não está)
-      // Vamos usar o método de "enviar verificação" com o currentUser, mas como não está autenticado,
-      // podemos usar o Firebase Auth com a função de reenviar verificação (não disponível diretamente).
-      // Solução alternativa: pedir ao utilizador para tentar fazer login novamente e usar o resend.
-      showAuthInfo('📧 A reenviar...');
-      // Para reenviar, precisamos de um utilizador autenticado. Vamos forçar login e depois reenviar.
-      try {
-        const userCredential = await auth.signInWithEmailAndPassword(email, '');
-        // Não vai funcionar porque precisa de password
-      } catch (e) {
-        // Vamos usar um método alternativo: enviar email de verificação via Firebase Admin SDK (no backend)
-        // Para simplificar, sugerimos ao utilizador que tente fazer login novamente e use o resend.
-        showAuthInfo('Por favor, tente fazer login com a sua palavra-passe. Se não recebeu o email, pode pedir para reenviar na página de login.');
-      }
-      // Melhor: deixar o utilizador clicar no link "Reenviar" e usar o backend para enviar.
-      // Mas por enquanto, vamos mostrar uma mensagem para o utilizador fazer login primeiro.
+      // Como não temos o utilizador autenticado, pedimos que tente login primeiro.
       showAuthInfo('Para reenviar o email de verificação, faça login com a sua palavra-passe e depois poderá reenviar.');
     } catch (error) {
       showAuthError(error.message);
@@ -663,19 +629,14 @@ googleBtn.addEventListener('click', async () => {
   // ================================================================
   auth.onAuthStateChanged(async (user) => {
     if (user) {
-      // Verificar se o email está verificado
       if (!user.emailVerified) {
-        // Se o utilizador tentou fazer login com email não verificado
         await auth.signOut();
         showAuthError('⚠️ O seu email ainda não foi verificado. Verifique a sua caixa de correio.');
         resendContainer.classList.remove('hidden');
-        // Voltar ao estado de login
         authCard.classList.remove('hidden');
         dashboardCard.classList.add('hidden');
         return;
       }
-
-      // Utilizador autenticado e verificado
       currentUser = user;
       console.log('✅ Utilizador autenticado:', user.uid, user.email);
       authCard.classList.add('hidden');
@@ -684,12 +645,9 @@ googleBtn.addEventListener('click', async () => {
       userAvatar.textContent = user.email.charAt(0).toUpperCase();
       uploadBtn.disabled = true;
       loadUserFiles();
-      // Esconder mensagens de erro
       clearAuthMessages();
       resendContainer.classList.add('hidden');
-
     } else {
-      // Utilizador deslogado
       currentUser = null;
       authCard.classList.remove('hidden');
       dashboardCard.classList.add('hidden');
@@ -698,7 +656,6 @@ googleBtn.addEventListener('click', async () => {
       authEmail.focus();
       clearAuthMessages();
       resendContainer.classList.add('hidden');
-      // Reset do estado de login
       isLogin = true;
       authTitle.textContent = '🔐 Entrar';
       authBtn.textContent = 'Entrar';
@@ -707,18 +664,21 @@ googleBtn.addEventListener('click', async () => {
   });
 
   // ================================================================
-  // 9. UPLOAD (restante igual)
+  // 9. UPLOAD MÚLTIPLO
   // ================================================================
   uploadArea.addEventListener('click', () => fileInput.click());
 
+  // Selecionar ficheiros
   fileInput.addEventListener('change', () => {
     if (fileInput.files.length) {
-      selectedFile = fileInput.files[0];
+      selectedFiles = Array.from(fileInput.files);
       uploadBtn.disabled = false;
-      showStatus(`📄 Selecionado: ${selectedFile.name} (${(selectedFile.size/1024).toFixed(2)} KB)`, 'info');
+      const totalSize = selectedFiles.reduce((acc, f) => acc + f.size, 0);
+      showStatus(`📄 ${selectedFiles.length} ficheiros selecionados (${(totalSize / 1024).toFixed(2)} KB)`, 'info');
     }
   });
 
+  // Drag & Drop
   uploadArea.addEventListener('dragover', (e) => {
     e.preventDefault();
     uploadArea.classList.add('dragover');
@@ -730,16 +690,18 @@ googleBtn.addEventListener('click', async () => {
     e.preventDefault();
     uploadArea.classList.remove('dragover');
     if (e.dataTransfer.files.length) {
-      selectedFile = e.dataTransfer.files[0];
+      selectedFiles = Array.from(e.dataTransfer.files);
       fileInput.files = e.dataTransfer.files;
       uploadBtn.disabled = false;
-      showStatus(`📄 Selecionado: ${selectedFile.name} (${(selectedFile.size/1024).toFixed(2)} KB)`, 'info');
+      const totalSize = selectedFiles.reduce((acc, f) => acc + f.size, 0);
+      showStatus(`📄 ${selectedFiles.length} ficheiros selecionados (${(totalSize / 1024).toFixed(2)} KB)`, 'info');
     }
   });
 
+  // Upload
   uploadBtn.addEventListener('click', async () => {
-    if (!selectedFile) {
-      showStatus('⚠️ Selecione um ficheiro!', 'error');
+    if (selectedFiles.length === 0) {
+      showStatus('⚠️ Selecione pelo menos um ficheiro!', 'error');
       return;
     }
     if (!currentUser) {
@@ -747,48 +709,69 @@ googleBtn.addEventListener('click', async () => {
       return;
     }
 
-    const formData = new FormData();
-    formData.append('file', selectedFile);
-    formData.append('uid', currentUser.uid);
-
     uploadBtn.disabled = true;
     progressDiv.style.display = 'block';
     progressBar.style.width = '0%';
     progressBar.textContent = '0%';
-    showStatus('⏳ A enviar...', 'info');
+    showStatus(`⏳ A enviar ${selectedFiles.length} ficheiros...`, 'info');
+
+    let completed = 0;
+    const totalSize = selectedFiles.reduce((acc, f) => acc + f.size, 0);
+    let uploadedSize = 0;
+    const results = [];
 
     try {
-      const xhr = new XMLHttpRequest();
-      const result = await new Promise((resolve, reject) => {
-        xhr.open('POST', `${API_BASE}/api/upload`);
-        xhr.upload.addEventListener('progress', (e) => {
-          if (e.lengthComputable) {
-            const pct = Math.round((e.loaded / e.total) * 100);
-            progressBar.style.width = pct + '%';
-            progressBar.textContent = pct + '%';
-          }
-        });
-        xhr.onload = () => {
-          if (xhr.status >= 200 && xhr.status < 300) {
-            try { resolve(JSON.parse(xhr.responseText)); } catch { reject(new Error('Resposta inválida')); }
-          } else {
-            try { const d = JSON.parse(xhr.responseText); reject(new Error(d.error || d.details || 'Erro no servidor')); } catch { reject(new Error('Erro ' + xhr.status)); }
-          }
-        };
-        xhr.onerror = () => reject(new Error('Erro de rede'));
-        xhr.send(formData);
-      });
+      for (const file of selectedFiles) {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('uid', currentUser.uid);
 
+        await new Promise((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('POST', `${API_BASE}/api/upload`);
+          xhr.upload.addEventListener('progress', (e) => {
+            if (e.lengthComputable) {
+              const currentFileProgress = e.loaded;
+              const totalProgress = ((uploadedSize + currentFileProgress) / totalSize) * 100;
+              progressBar.style.width = Math.min(totalProgress, 100) + '%';
+              progressBar.textContent = Math.min(Math.round(totalProgress), 100) + '%';
+            }
+          });
+          xhr.onload = () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              try {
+                const data = JSON.parse(xhr.responseText);
+                results.push(data);
+                uploadedSize += file.size;
+                resolve();
+              } catch {
+                reject(new Error('Resposta inválida'));
+              }
+            } else {
+              try {
+                const d = JSON.parse(xhr.responseText);
+                reject(new Error(d.error || d.details || 'Erro no servidor'));
+              } catch {
+                reject(new Error('Erro ' + xhr.status));
+              }
+            }
+          };
+          xhr.onerror = () => reject(new Error('Erro de rede'));
+          xhr.send(formData);
+        });
+      }
+
+      // Todos enviados
       progressBar.style.width = '100%';
       progressBar.textContent = '100%';
-      showStatus('✅ Ficheiro enviado com sucesso! 🎉', 'success');
-      selectedFile = null;
+      showStatus(`✅ ${results.length} ficheiros enviados com sucesso! 🎉`, 'success');
+      selectedFiles = [];
       fileInput.value = '';
       uploadBtn.disabled = true;
       loadUserFiles();
 
     } catch (error) {
-      showStatus('❌ ' + error.message, 'error');
+      showStatus(`❌ Erro: ${error.message}`, 'error');
     } finally {
       uploadBtn.disabled = false;
       setTimeout(() => {
