@@ -595,26 +595,29 @@
   // ================================================================
   // 5. LOGIN COM GOOGLE
   // ================================================================
-  googleBtn.addEventListener('click', async () => {
-    try {
-      googleBtn.disabled = true;
-      googleBtn.textContent = '⏳ A carregar...';
-      const provider = new firebase.auth.GoogleAuthProvider();
-      const result = await auth.signInWithPopup(provider);
-      // Se chegou aqui, o login foi bem-sucedido e o email do Google já está verificado
-      googleBtn.textContent = '🔴 Entrar com Google';
-      googleBtn.disabled = false;
-      // O onAuthStateChanged vai tratar do resto
-    } catch (error) {
-      googleBtn.textContent = '🔴 Entrar com Google';
-      googleBtn.disabled = false;
-      if (error.code === 'auth/popup-closed-by-user') {
-        showAuthError('Janela de login foi fechada. Tente novamente.');
-      } else {
-        showAuthError(error.message);
-      }
+  // ===== LOGIN COM GOOGLE =====
+googleBtn.addEventListener('click', async () => {
+  try {
+    googleBtn.disabled = true;
+    googleBtn.textContent = '⏳ A carregar...';
+    const provider = new firebase.auth.GoogleAuthProvider();
+    
+    // FORÇA A ESCOLHA DA CONTA SEMPRE
+    provider.setCustomParameters({ prompt: 'select_account' });
+    
+    const result = await auth.signInWithPopup(provider);
+    googleBtn.textContent = '🔴 Entrar com Google';
+    googleBtn.disabled = false;
+  } catch (error) {
+    googleBtn.textContent = '🔴 Entrar com Google';
+    googleBtn.disabled = false;
+    if (error.code === 'auth/popup-closed-by-user') {
+      showAuthError('Janela de login foi fechada. Tente novamente.');
+    } else {
+      showAuthError(error.message);
     }
-  });
+  }
+});
 
   // ================================================================
   // 6. REENVIAR VERIFICAÇÃO
