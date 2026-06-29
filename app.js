@@ -107,7 +107,7 @@ function getAccessToken() {
         const now = Math.floor(Date.now() / 1000);
         const payload = {
             iss: sa.client_email,
-            scope: 'https://www.googleapis.com/auth/devstorage.read_write',
+            scope: 'https://www.googleapis.com/auth/devstorage.full_control',
             aud: 'https://oauth2.googleapis.com/token',
             exp: now + 3600,
             iat: now
@@ -535,109 +535,110 @@ const server = http.createServer(async (req, res) => {
     }
 
     // ===== MOVER FICHEIRO =====
-    if (req.method === 'POST' && req.url === '/api/move') {
-        let body = '';
-        req.on('data', (chunk) => { body += chunk; });
-        req.on('end', async () => {
-            try {
-                const { fileName, destFolder, uid } = JSON.parse(body);
+    // ===== MOVER FICHEIRO =====
+if (req.method === 'POST' && req.url === '/api/move') {
+    let body = '';
+    req.on('data', (chunk) => { body += chunk; });
+    req.on('end', async () => {
+        try {
+            const { fileName, destFolder, uid } = JSON.parse(body);
 
-                if (!fileName || !uid) {
-                    res.writeHead(400, { 'Content-Type': 'application/json' });
-                    res.end(JSON.stringify({ error: 'fileName e uid são obrigatórios' }));
-                    return;
-                }
+            if (!fileName || !uid) {
+                res.writeHead(400, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'fileName e uid são obrigatórios' }));
+                return;
+            }
 
-                if (!fileName.startsWith(`users/${uid}/`)) {
-                    res.writeHead(403, { 'Content-Type': 'application/json' });
-                    res.end(JSON.stringify({ error: 'Não tem permissão para mover este ficheiro' }));
-                    return;
-                }
+            if (!fileName.startsWith(`users/${uid}/`)) {
+                res.writeHead(403, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'Não tem permissão para mover este ficheiro' }));
+                return;
+            }
 
-                const pathParts = fileName.split('/');
-                const encryptedName = pathParts.pop();
-                const currentFolder = pathParts.length > 3 ? pathParts[2] : '';
+            const pathParts = fileName.split('/');
+            const encryptedName = pathParts.pop();
+            const currentFolder = pathParts.length > 3 ? pathParts[2] : '';
 
-                if (destFolder === currentFolder) {
-                    res.writeHead(200, { 'Content-Type': 'application/json' });
-                    res.end(JSON.stringify({ message: 'Ficheiro já está na pasta pretendida.' }));
-                    return;
-                }
+            if (destFolder === currentFolder) {
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ message: 'Ficheiro já está na pasta pretendida.' }));
+                return;
+            }
 
-                const token = await getAccessToken();
+            const token = await getAccessToken();
 
-                const destFolderPath = destFolder ? `${destFolder}/` : '';
-                const newFileName = `users/${uid}/${destFolderPath}${encryptedName}`;
+            const destFolderPath = destFolder ? `${destFolder}/` : '';
+            const newFileName = `users/${uid}/${destFolderPath}${encryptedName}`;
 
-                // ===== COPIAR O FICHEIRO =====
-                const copyUrl = `https://storage.googleapis.com/storage/v1/b/${BUCKET_NAME}/o/${encodeURIComponent(fileName)}/copyTo/b/${BUCKET_NAME}/o/${encodeURIComponent(newFileName)}`;
+            // ===== COPIAR COM ACL PÚBLICA DIRETAMENTE =====
+            const copyUrl = `https://storage.googleapis.com/storage/v1/b/${BUCKET_NAME}/o/${encodeURIComponent(fileName)}/copyTo/b/${BUCKET_NAME}/o/${encodeURIComponent(newFileName)}?destinationPredefinedAcl=publicRead`;
 
-                await new Promise((resolve, reject) => {
-                    const options = {
-                        method: 'POST',
-                        headers: {
-                            'Authorization': `Bearer ${token}`,
-                            'Content-Type': 'application/json'
+            console.log(`⏳ A copiar de ${fileName} para ${newFileName} com ACL pública...`);
+            await new Promise((resolve, reject) => {
+                const options = {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                };
+                const req = https.request(copyUrl, options, (res) => {
+                    let data = '';
+                    res.on('data', (chunk) => { data += chunk; });
+                    res.on('end', () => {
+                        try {
+                            const response = JSON.parse(data);
+                            if (response.name) {
+                                console.log('✅ Ficheiro copiado com ACL pública para:', newFileName);
+                                resolve();
+                            } else {
+                                reject(new Error('Erro ao copiar: ' + JSON.stringify(response)));
+                            }
+                        } catch (error) {
+                            reject(new Error('Erro ao processar resposta da cópia: ' + error.message));
                         }
-                    };
-                    const req = https.request(copyUrl, options, (res) => {
+                    });
+                });
+                req.on('error', (error) => {
+                    reject(new Error('Erro na requisição de cópia: ' + error.message));
+                });
+                req.write(JSON.stringify({}));
+                req.end();
+            });
+
+            // ===== ELIMINAR O ORIGINAL =====
+            const deleteUrl = `https://storage.googleapis.com/storage/v1/b/${BUCKET_NAME}/o/${encodeURIComponent(fileName)}`;
+            console.log(`🗑️ A eliminar original: ${fileName}`);
+            await new Promise((resolve, reject) => {
+                const options = {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                };
+                const req = https.request(deleteUrl, options, (res) => {
+                    if (res.statusCode === 204) {
+                        console.log('✅ Original eliminado.');
+                        resolve();
+                    } else {
                         let data = '';
                         res.on('data', (chunk) => { data += chunk; });
                         res.on('end', () => {
                             try {
                                 const response = JSON.parse(data);
-                                if (response.name) {
-                                    console.log('✅ Ficheiro copiado para:', newFileName);
-                                    resolve();
-                                } else {
-                                    reject(new Error('Erro ao copiar: ' + JSON.stringify(response)));
-                                }
-                            } catch (error) {
-                                reject(new Error('Erro ao processar resposta da cópia: ' + error.message));
+                                reject(new Error(response.error?.message || 'Erro ao eliminar original'));
+                            } catch {
+                                reject(new Error('Erro ' + res.statusCode));
                             }
                         });
-                    });
-                    req.on('error', (error) => {
-                        reject(new Error('Erro na requisição de cópia: ' + error.message));
-                    });
-                    req.write(JSON.stringify({}));
-                    req.end();
+                    }
                 });
-
-                // ===== TORNAR O NOVO FICHEIRO PÚBLICO =====
-                await setPublicAcl(newFileName, token);
-
-                // ===== ELIMINAR O ORIGINAL =====
-                const deleteUrl = `https://storage.googleapis.com/storage/v1/b/${BUCKET_NAME}/o/${encodeURIComponent(fileName)}`;
-                await new Promise((resolve, reject) => {
-                    const options = {
-                        method: 'DELETE',
-                        headers: { 'Authorization': `Bearer ${token}` }
-                    };
-                    const req = https.request(deleteUrl, options, (res) => {
-                        if (res.statusCode === 204) {
-                            console.log('🗑️ Original eliminado:', fileName);
-                            resolve();
-                        } else {
-                            let data = '';
-                            res.on('data', (chunk) => { data += chunk; });
-                            res.on('end', () => {
-                                try {
-                                    const response = JSON.parse(data);
-                                    reject(new Error(response.error?.message || 'Erro ao eliminar original'));
-                                } catch {
-                                    reject(new Error('Erro ' + res.statusCode));
-                                }
-                            });
-                        }
-                    });
-                    req.on('error', (error) => {
-                        reject(new Error('Erro na requisição de eliminação: ' + error.message));
-                    });
-                    req.end();
+                req.on('error', (error) => {
+                    reject(new Error('Erro na requisição de eliminação: ' + error.message));
                 });
+                req.end();
+            });
 
-                // ===== ATUALIZAR METADADOS NO FIRESTORE =====
+            // ===== ATUALIZAR METADADOS NO FIRESTORE =====
+            try {
                 const oldDocRef = db.collection('users').doc(uid).collection('files').doc(encryptedName);
                 const doc = await oldDocRef.get();
                 if (doc.exists) {
@@ -646,19 +647,32 @@ const server = http.createServer(async (req, res) => {
                     data.uploadedAt = new Date().toISOString();
                     await oldDocRef.set(data);
                     console.log('📝 Metadados atualizados para:', encryptedName);
+                } else {
+                    await oldDocRef.set({
+                        originalName: encryptedName,
+                        uploadedAt: new Date().toISOString(),
+                        size: 0,
+                        encryptedName: encryptedName,
+                        folder: destFolder || ''
+                    });
+                    console.log('📝 Metadados criados para:', encryptedName);
                 }
-
-                res.writeHead(200, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({ success: true, message: 'Ficheiro movido com sucesso!' }));
-
-            } catch (error) {
-                console.error('❌ Erro ao mover ficheiro:', error.message);
-                res.writeHead(500, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({ error: error.message }));
+            } catch (firestoreError) {
+                console.warn('⚠️ Erro ao atualizar metadados no Firestore:', firestoreError.message);
             }
-        });
-        return;
-    }
+
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ success: true, message: 'Ficheiro movido com sucesso!' }));
+
+        } catch (error) {
+            console.error('❌ Erro ao mover ficheiro:', error.message);
+            console.error(error.stack);
+            res.writeHead(500, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: error.message }));
+        }
+    });
+    return;
+}
 
     // ===== PÁGINA PRINCIPAL =====
     if (req.method === 'GET' && req.url === '/') {
