@@ -10,6 +10,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
 
   <style>
+    /* (mesmo CSS de antes) */
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html { font-size: 16px; scroll-behavior: smooth; }
     body {
@@ -570,11 +571,11 @@
       <input type="file" id="fileInput" multiple />
     </div>
 
-    <!-- Seletor de pasta de destino -->
+    <!-- Seletor de pasta de destino (sem "Raiz" visível) -->
     <div class="dest-folder-selector">
       <label for="destFolderSelect">📂 Enviar para:</label>
       <select id="destFolderSelect">
-        <option value="">Raiz</option>
+        <option value="">─── Selecionar pasta ───</option>
       </select>
     </div>
 
@@ -1114,6 +1115,7 @@
     });
     const folderList = Array.from(folders);
 
+    // Seletor de filtro
     while (folderSelect.options.length > 2) {
       folderSelect.remove(2);
     }
@@ -1124,6 +1126,7 @@
       folderSelect.appendChild(opt);
     });
 
+    // Seletor de destino (upload) – mantém a primeira opção "─── Selecionar pasta ───"
     while (destFolderSelect.options.length > 1) {
       destFolderSelect.remove(1);
     }
